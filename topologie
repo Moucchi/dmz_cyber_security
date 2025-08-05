@@ -1,0 +1,25 @@
+Switch-DMZ :
+	e0 <=> eth1 ubuntu-firewall-1
+	e1 <=> eth0 ubuntu-dmz-webserver-1
+	e2 <=> eth0 ubuntu-ids-snort-1
+Switch-LAN :
+	e0 <=> eth2 ubuntu-firewall-1
+	e1 <=> eth0 ubuntu-client-1
+	e2 <=> eth0 ubuntu_webserver-1
+Switch-WAN :
+	e0 <=> eth0 ubuntu-wan-1
+	e1 <=> eth0 ubuntu-firewall-1
+ubuntu-client-1
+	eth0 <=> e1 Switch-LAN
+ubuntu-dmz-webserver-1
+	eth0 <=> e1 Switch-DMZ
+ubuntu-firewall-1
+	eth0 <=> e1 Switch-WAN
+	eth1 <=> e0 Switch-DMZ
+	eth2 <=> e0 Switch-LAN
+ubuntu-ids-snort-1
+	eth0 <=> e2 Switch-DMZ
+ubuntu-wan-1
+	eth0 <=> e0 Switch-WAN
+ubuntu_webserver-1
+	eth0 <=> e2 Switch-LAN

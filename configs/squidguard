@@ -1,0 +1,32 @@
+echo "
+dbhome /var/lib/squidguard/db
+logdir /var/log/squidguard
+
+dest blocked {
+    domainlist     blocked/domains
+    urllist        blocked/urls
+}
+
+src lan {
+    ip              19.4.3.0/29
+}
+
+acl {
+    lan {
+        pass !blocked all
+    }
+
+    default {
+        pass all
+    }
+}" > /etc/squidguard/squidGuard.conf
+
+mkdir -p /var/lib/squidguard/db/blocked
+touch /var/lib/squidguard/db/blocked/ips
+touch /var/lib/squidguard/db/blocked/urls
+touch /var/lib/squidguard/db/blocked/domains
+
+echo "192.168.1.19/24" > /var/lib/squidguard/db/blocked/ips
+
+squidGuard -C all
+chown -R proxy:proxy /var/lib/squidguard/db

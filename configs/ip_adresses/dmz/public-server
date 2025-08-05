@@ -1,0 +1,2 @@
+ip a add 19.4.3.9/29 dev eth0
+ip route add default via 19.4.3.11 dev  eth0

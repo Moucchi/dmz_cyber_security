@@ -1,0 +1,15 @@
+echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
+a2enconf servername
+service apache2 restart
+
+cd /var/www/html/
+
+echo "<html>
+<head>
+    <title>Mon serveur Apache dans Docker du WAN-3</title>
+</head>
+<body>
+    <h1>Bienvenue sur mon serveur web 1</h1>
+    <p>Cette page a été créée le 30 juin 2025 par Moucchi.</p>
+</body>
+</html>" > /var/www/html/index.html
