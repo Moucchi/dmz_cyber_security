@@ -453,14 +453,14 @@ Etant donné qu'on a crée l'image docker à partir d'une image **ubuntu vierge*
   iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
   ```
 
-![alt text](image-1.png)
+![Autoriser HTTP, HTTPS, SSH vers la DMZ ](image-1.png)
 
 ##### -  Bloquer tout autre port ou protocole par défaut
  ```bash
   iptables -P FORWARD DROP
   ```
 
-![alt text](image-2.png)
+![Bloquer tout autre port ou protocole par défaut](image-3.png)
 
 ##### -  Bloquer l’accès du WAN vers le LAN
 Déja inclut avec :
@@ -474,8 +474,11 @@ Déja inclut avec :
   iptables -A FORWARD -s $LAN -o $WAN_IFACE -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
   iptables -A FORWARD -s $WAN -i $WAN_IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
   ```
-
-![alt text](image-4.png)
+![Autoriser le LAN à sortir vers l’extérieur via NAT](image-2.png)
+- ping depuis LAN vers WAN : 
+  - ![alt text](image-5.png)
+- capture du trafic a l'interieur du firewall :
+  - ![alt text](image-4.png)
 
 ###### Tests
 **WAN -> DMZ**
