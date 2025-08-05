@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     nano \
     openssh-client \
+    openssh-server \
     iproute2 \
     dnsutils \
     apache2-utils \

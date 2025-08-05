@@ -20,7 +20,6 @@ La méthodologie suivie pour la réalisation de ce travail pratique s’articule
 
 ### 1. **Création des images Docker**
 
-
 La première étape a consisté à créer les images Docker nécessaires pour simuler l'ensemble des machines de notre architecture DMZ. Plusieurs Dockerfiles ont été développés, chacun correspondant à un rôle spécifique dans l'infrastructure :
 
 #### 1.1 Client LAN (`ubuntu_client`)
@@ -94,12 +93,13 @@ RUN apt-get update && apt-get install -y \
     wget \
     nano \
     openssh-client \
+    openssh-server \
     iproute2 \
     dnsutils \
     apache2-utils \
     tcpdump \
     net-tools \
-    snort
+    snort 
 ```
 
 **Rôle** : Serveur web Apache situé dans la DMZ, accessible depuis Internet mais isolé du réseau LAN interne. Il intègre également des outils de supervision (`tcpdump`, `net-tools`) et un IDS (`snort`) pour la détection d'intrusions.
@@ -349,4 +349,108 @@ DMZ="19.4.3.8/29"
 - **DMZ -> WAN**
  ```bash
   ping 19.4.3.17
+  ```
+
+##### 3. Configuration des servers
+###### 3.1 public-server
+ ```bash
+echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
+a2enconf servername
+service apache2 restart
+
+cd /var/www/html/
+
+echo "<html>
+<head>
+    <title>Serveur Apache dans Docker DMZ</title>
+</head>
+<body>
+    <h1>Bienvenue sur le serveur publique</h1>
+</body>
+</html>" > /var/www/html/index.html
+
+a2enmod ssl
+a2enmod rewrite
+
+mkdir -p /etc/ssl/private
+mkdir -p /etc/ssl/certs
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/ssl/private/apache-selfsigned.key \
+    -out /etc/ssl/certs/apache-selfsigned.crt \
+    -subj "/C=FR/ST=State/L=City/O=Organization/OU=OrgUnit/CN=webserver"
+
+cat > /etc/apache2/sites-available/default-ssl.conf << 'EOF'
+<IfModule mod_ssl.c>
+    <VirtualHost *:443>
+        DocumentRoot /var/www/html
+        
+        SSLEngine on
+        SSLCertificateFile /etc/ssl/certs/apache-selfsigned.crt
+        SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
+        
+        <FilesMatch "\.(cgi|shtml|phtml|php)$">
+            SSLOptions +StdEnvVars
+        </FilesMatch>
+    </VirtualHost>
+</IfModule>
+EOF
+
+a2ensite default-ssl
+
+service apache2 restart
+  ```
+
+###### 3.1 internal-server
+ ```bash
+  echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
+  a2enconf servername
+  service apache2 restart
+
+  cd /var/www/html/
+
+  echo "<html>
+  <head>
+      <title>Serveur Apache dans Docker Interne</title>
+  </head>
+  <body>
+      <h1>Bienvenue sur le serveur interne</h1>
+  </body>
+  </html>" > /var/www/html/index.html
+
+  ```
+
+### 3.  **Configuration des services et comportements attendus**
+#### 3.1. **Pare-feu**
+On definit tout d'abors les varables à utiliser :
+ ```bash
+  WAN="19.4.3.16/29"
+  LAN="19.4.3.0/29"
+  DMZ="19.4.3.8/29"
+  HTTP="80"
+  HTTPS="443"
+  SSH="22"
+
+  WAN_IFACE="eth0"
+  DMZ_IFACE="eth1"
+  LAN_IFACE="eth2"
+  ```
+
+Etant donné qu'on a crée l'image docker à partir d'une image **ubuntu vierge** et qu'on a **nous meme installé les packets necessaires**, **``iptables`` ne contient encore aucune regle**.
+
+##### - Autoriser HTTP, HTTPS, SSH vers la DMZ (depuis WAN et LAN)
+ ```bash
+  iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ -m multiport --dports $HTTP,$HTTPS,$SSH -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+  iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+  ```
+
+###### Tests
+**WAN -> DMZ**
+- HTTP :
+```bash
+  curl http://19.4.3.9
+  ```
+- HTTPS 
+```bash
+  curl https://19.4.3.9
   ```
