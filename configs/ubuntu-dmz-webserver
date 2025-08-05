@@ -41,7 +41,6 @@ cat > /etc/apache2/sites-available/default-ssl.conf << 'EOF'
 EOF
 
 a2ensite default-ssl
-
 service apache2 restart
 
 mkdir -p /var/run/sshd
