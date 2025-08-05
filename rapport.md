@@ -274,89 +274,79 @@ DMZ="19.4.3.8/29"
 
 
 
-##### 3. Test de la topologie de base
-###### 1. LAN -> LAN
+#### 2.3. Test de la topologie de base
+###### 1. LAN <-> LAN
 - **internal-desktop -> internal-server**
  ```bash
   ping 19.4.3.2
   ```
 
-![internal-desktop -> internal-server](image-1.png)
 - **internal-server -> internal-desktop**
 ```bash
   ping 19.4.3.1
   ```
-![internal-server -> internal-desktop](image-2.png)
 
 ###### 2. firewall <-> LAN
 - **firewall -> internal-desktop**
  ```bash
   ping 19.4.3.1
   ```
-![firewall -> internal-desktop](image-3.png)
 
 - **firewall -> internal-server**
  ```bash
   ping 19.4.3.2
   ```
-![firewall -> internal-server](image-4.png)
 
 - **internal-server -> firewall**
  ```bash
   ping 19.4.3.3
   ```
-![internal-server -> firewall](image-10.png)
 
 - **internal-desktop -> firewall**
  ```bash
   ping 19.4.3.3
   ```
-![internal-desktop -> firewall](image-9.png)
 
 ###### 3. firewall <-> WAN
 - **firewall -> internet**
  ```bash
   ping 19.4.3.17
   ```
-![firewall -> internet](image-5.png)
 
 - **internet -> firewall**
  ```bash
   ping 19.4.3.18
   ```
-![internet -> firewall](image-6.png)
 
-###### 4. DMZ <-> firewall
+###### 4. firewall <-> DMZ
 - **firewall -> DMZ**
  ```bash
   ping 19.4.3.9
   ```
 
-![firewall -> DMZ](image-7.png)
-
 - **DMZ -> firewall**
  ```bash
   ping 19.4.3.11
   ```
-![alt text](image-8.png)
 
-###### 5. LAN <-> DMZ
+###### 5. DMZ <-> LAN
 - **LAN -> DMZ**
  ```bash
   ping 19.4.3.9
   ```
-![LAN -> DMZ](image-11.png)
 
 - **DMZ -> LAN**
  ```bash
   ping 19.4.3.1
+  ping 19.4.3.2
   ```
 
-![DMZ -> LAN](image-12.png)
-
-###### 6. WAN -> DMZ
-- **LAN -> DMZ**
+###### 6. WAN <-> DMZ
+- **WAN -> DMZ**
  ```bash
   ping 19.4.3.9
   ```
-![WAN -> DMZ](image-13.png)
+- **DMZ -> WAN**
+ ```bash
+  ping 19.4.3.17
+  ```
