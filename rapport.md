@@ -149,7 +149,8 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     iproute2 \
     apache2 \
-    dnsutils
+    dnsutils \
+    tcpdump
 ```
 
 **Rôle** : Machine externe utilisée pour simuler des connexions depuis Internet et tester les règles de sécurité.
@@ -476,26 +477,7 @@ Déja inclut avec :
   ```
 ![Autoriser le LAN à sortir vers l’extérieur via NAT](image-2.png)
 - ping depuis LAN vers WAN : 
-  - ![alt text](image-5.png)
-- capture du trafic a l'interieur du firewall :
-  - ![alt text](image-4.png)
+  - ![alt text](image-6.png)
+- affichage des packets dans internet :
+  - ![alt text](image-7.png)
 
-###### Tests
-**WAN -> DMZ**
-- HTTP :
-```bash
-  curl http://19.4.3.9
-  ```
-  ![HTTP wan -> dmz](http_dmz.png)
-
-- HTTPS 
-```bash
-  curl -k https://19.4.3.9
-  ```
-  ![HTTPS wan -> dmz](https_dmz.png)
-- SSH
-```bash
-  ssh user@19.4.3.9
-  #password : root
-  ```
-![SSH -> DMZ](ssh_dmz.png)
