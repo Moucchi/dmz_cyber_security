@@ -351,7 +351,7 @@ DMZ="19.4.3.8/29"
   ping 19.4.3.17
   ```
 
-##### 3. Configuration des servers
+#### 3. Configuration des servers
 ###### 3.1 public-server
  ```bash
 echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
@@ -399,6 +399,15 @@ EOF
 a2ensite default-ssl
 
 service apache2 restart
+
+mkdir -p /var/run/sshd
+ssh-keygen -A
+echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+useradd -m -s /bin/bash user
+echo "user:root" | chpasswd
+service ssh start
+
   ```
 
 ###### 3.1 internal-server
