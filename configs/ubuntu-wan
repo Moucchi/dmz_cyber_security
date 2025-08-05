@@ -6,10 +6,9 @@ cd /var/www/html/
 
 echo "<html>
 <head>
-    <title>Mon serveur Apache dans Docker du WAN-1</title>
+    <title>Mon serveur Apache dans Docker du WAN</title>
 </head>
 <body>
-    <h1>Bienvenue sur mon serveur web 1</h1>
-    <p>Cette page a été créée le 30 juin 2025 par Moucchi.</p>
+    <h1>Bienvenue sur le WAN</h1>
 </body>
 </html>" > /var/www/html/index.html

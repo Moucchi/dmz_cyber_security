@@ -411,7 +411,7 @@ service ssh start
 
   ```
 
-###### 3.1 internal-server
+###### 3.2 internal-server
  ```bash
   echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
   a2enconf servername
@@ -429,6 +429,25 @@ service ssh start
   </html>" > /var/www/html/index.html
 
   ```
+###### 3.3 internet
+
+```bash
+echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
+a2enconf servername
+service apache2 restart
+
+cd /var/www/html/
+
+echo "<html>
+<head>
+    <title>Mon serveur Apache dans Docker du WAN</title>
+</head>
+<body>
+    <h1>Bienvenue sur le WAN</h1>
+</body>
+</html>" > /var/www/html/index.html
+
+```
 
 ### 3.  **Configuration des services et comportements attendus**
 #### 3.1. **Pare-feu**
@@ -481,3 +500,196 @@ Déja inclut avec :
 - affichage des packets dans internet :
   - ![alt text](image-7.png)
 
+##### - Bloquer les sites pornographiques (SquidGuard)
+Il faut d'abord configurer iptables pour rediriger le trafic vers Squid :
+```bash
+iptables -t nat -I PREROUTING 1 -p tcp --dport 80 -j REDIRECT --to-port 3128
+
+
+iptables -A INPUT -p tcp --dport 3128 -j ACCEPT
+iptables -A INPUT -p tcp --dport 3129 -j ACCEPT
+``` 
+
+Configurer ensuite squid : 
+```bash
+cat > /etc/squid/squid.conf << 'EOF'
+http_port 3128 intercept
+http_port 3129
+
+acl localnet src 19.4.3.0/29
+acl localnet src 19.4.3.8/29
+acl localnet src 19.4.3.16/29
+
+acl SSL_ports port 443
+acl Safe_ports port 80
+acl Safe_ports port 21
+acl Safe_ports port 443
+acl Safe_ports port 70
+acl Safe_ports port 210
+acl Safe_ports port 1025-65535
+acl Safe_ports port 280
+acl Safe_ports port 488
+acl Safe_ports port 591
+acl Safe_ports port 777
+acl CONNECT method CONNECT
+
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access allow localnet
+http_access deny all
+
+redirect_program /usr/bin/squidGuard -c /etc/squidguard/squidGuard.conf
+redirect_children 5
+
+access_log /var/log/squid/access.log squid
+cache_log /var/log/squid/cache.log
+
+cache_dir ufs /var/spool/squid 100 16 256
+
+httpd_suppress_version_string on
+EOF
+```
+Configuration du fichier de configuration de squidguard :
+
+```bash
+cat > /etc/squidguard/squidGuard.conf << 'EOF'
+#
+# CONFIG FILE FOR SQUIDGUARD
+#
+# Caution: do NOT use comments inside { }
+#
+
+dbhome /var/lib/squidguard/db
+logdir /var/log/squidguard
+
+#
+# TIME RULES:
+# abbrev for weekdays: 
+# s = sun, m = mon, t =tue, w = wed, h = thu, f = fri, a = sat
+
+time workhours {
+weekly mtwhf 08:00 - 16:30
+date *-*-01  08:00 - 16:30
+}
+
+#
+# SOURCE ADDRESSES:
+#
+
+src admin {
+  ip 19.4.3.2
+}
+
+src internal-desktop {
+  ip 19.4.3.1
+}
+
+src lan {
+  ip 19.4.3.0/29
+}
+
+#
+# DESTINATION CLASSES:
+#
+# [see also in file dest-snippet.txt]
+
+dest blockedsite {
+    domainlist blockeddomains
+}
+
+#dest adult {
+#domainlistBL/adult/domains
+#urllistBL/adult/urls
+#expressionlistBL/adult/expressions
+#redirect http://admin.foo.bar.de/cgi-bin/blocked.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
+#}
+
+#
+# ACL RULES:
+#
+
+
+acl {
+    admin {
+        pass all
+    }
+    lan {
+        pass !blockedsite all
+        redirect http://localhost/blocked.html
+    }
+    default {
+        pass none
+        redirect http://localhost/blocked.html
+    }
+}
+
+EOF
+```
+
+```bash
+mkdir -p /var/lib/squidguard/db
+
+cat > /var/lib/squidguard/db/blockeddomains << 'EOF'
+x.adulte.com
+EOF
+```
+
+```bash
+mkdir -p /var/log/squidguard
+mkdir -p /var/spool/squid
+
+# Compilation de la base de données SquidGuard AVANT le démarrage de Squid
+squidGuard -C all
+
+# Configuration des permissions
+chown -R proxy:proxy /var/lib/squidguard/db
+chown -R proxy:proxy /var/log/squidguard
+chown -R proxy:proxy /var/spool/squid
+chmod -R 644 /var/lib/squidguard/db/blockeddomains
+
+# Initialisation du cache Squid
+squid -z
+```
+
+```bash
+cat > /var/www/html/blocked.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Accès bloqué</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>Accès refusé</h1>
+    <p>Ce site est bloqué par la politique de sécurité.</p>
+    <p>Contact: admin@moucchi.mg</p>
+</body>
+</html>
+EOF
+```
+
+```bash
+echo "ServerName localhost" >> /etc/apache2/apache2.conf
+echo "127.0.0.1 firewall" >> /etc/hosts
+service apache2 start
+squid -k parse
+killall squid 2>/dev/null || true
+service squid start
+
+
+echo "interface=eth2" >> /etc/dnsmasq.conf  
+echo "interface=eth1" >> /etc/dnsmasq.conf  
+
+echo "19.4.3.17 x.adulte.com" >> /etc/hosts
+
+service dnsmasq restart
+
+
+iptables -A INPUT -p udp --dport 53 -j ACCEPT
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+```
+
+LAN : 
+```bash
+echo "nameserver 19.4.3.3" > /etc/resolv.conf
+```

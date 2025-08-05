@@ -11,4 +11,5 @@ RUN apt-get update && apt-get install -y \
     nano \
     openssh-client \
     iproute2 \
-    dnsutils
+    dnsutils \
+    dnsmasq

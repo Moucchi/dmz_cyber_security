@@ -13,4 +13,5 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     iproute2 \
     dnsutils \
-    apache2-utils
+    apache2-utils \
+    dnsmasq
