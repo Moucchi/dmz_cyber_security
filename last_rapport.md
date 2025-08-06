@@ -877,125 +877,32 @@ wget http://19.4.3.17/largefile.img
 
 ##### Configuration de Snort sur le serveur DMZ
 
-Sur le serveur `public-server` (19.4.3.9), nous configurons Snort pour détecter les tentatives d'intrusion. Une configuration plus robuste et précise est mise en place pour réduire les faux positifs et améliorer la détection.
+On commence par faire un backup du fichier de configuration principal de snort 
 
 ```bash
-# Configuration de base de Snort
-cat > /etc/snort/snort.conf << 'EOF'
-# Variables réseau
-# Le réseau local à protéger (la DMZ)
-var HOME_NET 19.4.3.8/29
-# Tout ce qui n'est pas le réseau local
-var EXTERNAL_NET !$HOME_NET
+cp /etc/snort/snort.conf /etc/snort/snort.conf.bak
+```
+Il faut ensuite changer la valeur de `HOME_NET` à la plage du DMZ et definir la valeur des reseaux externes 
+```bash
+ipvar HOME_NET 19.4.3.8/29
 
-# Adresses IP spécifiques des serveurs dans la DMZ
-# Notre serveur web public
-var HTTP_SERVERS 19.4.3.9
-var WWW_SERVERS 19.4.3.9
-# Pas de serveurs SQL ou SMTP dans cette config, mais on les définit au cas où
-var SQL_SERVERS 19.4.3.9
-var SMTP_SERVERS 19.4.3.9
-var DNS_SERVERS any
+# Set up the external network addresses. Leave as "any" in most situations
+ipvar EXTERNAL_NET !$HOME_NET
+```
 
-# Variables de ports
-var HTTP_PORTS 80
-var SSH_PORTS 22
-# Ports autorisés à recevoir du trafic entrant
-var ALLOWED_PORTS [80,443,22]
-
-# Chemin vers les règles
-var RULE_PATH /etc/snort/rules
-var SO_RULE_PATH /etc/snort/so_rules
-var PREPROC_RULE_PATH /etc/snort/preproc_rules
-
-# Configuration du préprocesseur pour la détection de scan de ports
-# C'est la méthode moderne et recommandée
-preprocessor sfportscan: proto { all } \
-    memcap { 10000000 } \
-    sense_level { low }
-
-# Configuration des sorties
-# Alerter via syslog et enregistrer les paquets dans un fichier pcap
-output alert_syslog: LOG_AUTH LOG_ALERT
-output log_tcpdump: /var/log/snort/snort.log
-
-# Inclusion des règles
-include $RULE_PATH/local.rules
+Ajouter une regle personnalisée pour permettre de detecter les scans de port
+```bash
+cat >> /etc/snort/rules/local.rules << 'EOF'
+alert tcp any any -> 19.4.3.9 any ( msg:"Misy mijerijery letie";  sid:100001; rev:1; )
+snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
 EOF
-
-# Création du répertoire pour les logs de Snort
-mkdir -p /var/log/snort
-
-# Création de règles personnalisées
-mkdir -p /etc/snort/rules
-cat > /etc/snort/rules/local.rules << 'EOF'
-# Règles de détection personnalisées pour la DMZ
-
-# Note : La détection de scan de ports est maintenant gérée par le préprocesseur sfportscan dans snort.conf
-# pour une meilleure efficacité. La règle manuelle n'est plus nécessaire.
-
-# Détection d'attaques web courantes
-alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"Tentative d'injection SQL"; content:"union select"; nocase; sid:1000002; rev:1;)
-alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"Tentative XSS"; content:"<script>"; nocase; sid:1000003; rev:1;)
-alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"Tentative de directory traversal"; content:"../"; sid:1000004; rev:1;)
-
-# Détection de brute force SSH
-alert tcp any any -> $HOME_NET $SSH_PORTS (msg:"Brute force SSH suspect"; flow:to_server,established; threshold: type threshold, track by_src, count 5, seconds 60; sid:1000005; rev:1;)
-
-# Détection de tentatives de connexion à des ports non autorisés
-alert tcp any any -> $HOME_NET !$ALLOWED_PORTS (msg:"Connexion sur un port non autorisé"; threshold: type both, track by_src, count 3, seconds 60; sid:1000006; rev:1;)
-EOF
-
-# Démarrage de Snort en mode IDS
-snort -A console -q -c /etc/snort/snort.conf -i eth0 &
 ```
 
-### 4. Test de la détection d'intrusion (Snort)
-
-Pour vérifier que notre configuration de Snort est fonctionnelle, nous allons simuler quelques attaques de base depuis la machine `internet` et observer les alertes générées sur le `public-server`.
-
-#### 4.1 Test de la détection de scan de ports
-
-Le préprocesseur `sfportscan` de Snort est conçu pour détecter les tentatives de balayage de ports.
-
-Nous utiliserons `nmap`, un outil de scan réseau très populaire. Installons-le sur notre machine `internet`.
-
-
-##### 2. Lancement du scan
-
-Depuis la machine `internet`, nous lançons un scan SYN (une technique de scan furtive courante) contre notre serveur `public-server`.
-
+Verifier la validité du fichier de configuration :
 ```bash
-# Sur la machine 'internet'
-nmap -sS 19.4.3.9
+snort -T -c /etc/snort/snort.conf -i eth0
 ```
-
-##### 3. Vérification des alertes
-
-Sur le `public-server`, nous pouvons maintenant vérifier les logs pour voir si Snort a généré une alerte. Comme nous avons configuré la sortie `alert_syslog`, les alertes devraient apparaître dans `/var/log/syslog` ou un fichier similaire.
-
+Lancer snort 
 ```bash
-# Sur le serveur 'public-server'
-# Chercher les alertes de scan de port générées par Snort
-grep "Portscan" /var/log/syslog
+snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
 ```
-
-Vous devriez voir une ou plusieurs lignes indiquant qu'un scan de ports a été détecté, confirmant que le préprocesseur `sfportscan` fonctionne correctement.
-
-#### 4.2 Test de la détection d'attaque web
-
-Nous pouvons également tester une des règles personnalisées, comme la détection de tentative d'injection SQL.
-
-```bash
-# Sur la machine 'internet'
-curl "http://19.4.3.9/index.html?id=1%20union%20select%201,2,3"
-```
-
-Ensuite, vérifiez les logs sur le `public-server` :
-
-```bash
-# Sur le serveur 'public-server'
-grep "Tentative d'injection SQL" /var/log/syslog
-```
-
-L'apparition d'une alerte confirmera que vos règles personnalisées sont bien actives.
