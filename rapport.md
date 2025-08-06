@@ -482,7 +482,7 @@ echo "<html>
 
 #### 3.1. **Pare-feu**
 
-On definit tout d'abors les varables à utiliser :
+On definit tout d'abord les varables à utiliser :
 
  ```bash
   WAN="19.4.3.16/29"
