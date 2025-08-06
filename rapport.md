@@ -276,85 +276,6 @@ DMZ="19.4.3.8/29"
 ###### Image de la topologie :
 ![Image topologie](image_topologie.png)
 
-
-
-#### 2.3. Test de la topologie de base
-###### 1. LAN <-> LAN
-- **internal-desktop -> internal-server**
- ```bash
-  ping 19.4.3.2
-  ```
-
-- **internal-server -> internal-desktop**
-```bash
-  ping 19.4.3.1
-  ```
-
-###### 2. firewall <-> LAN
-- **firewall -> internal-desktop**
- ```bash
-  ping 19.4.3.1
-  ```
-
-- **firewall -> internal-server**
- ```bash
-  ping 19.4.3.2
-  ```
-
-- **internal-server -> firewall**
- ```bash
-  ping 19.4.3.3
-  ```
-
-- **internal-desktop -> firewall**
- ```bash
-  ping 19.4.3.3
-  ```
-
-###### 3. firewall <-> WAN
-- **firewall -> internet**
- ```bash
-  ping 19.4.3.17
-  ```
-
-- **internet -> firewall**
- ```bash
-  ping 19.4.3.18
-  ```
-
-###### 4. firewall <-> DMZ
-- **firewall -> DMZ**
- ```bash
-  ping 19.4.3.9
-  ```
-
-- **DMZ -> firewall**
- ```bash
-  ping 19.4.3.11
-  ```
-
-###### 5. DMZ <-> LAN
-- **LAN -> DMZ**
- ```bash
-  ping 19.4.3.9
-  ```
-
-- **DMZ -> LAN**
- ```bash
-  ping 19.4.3.1
-  ping 19.4.3.2
-  ```
-
-###### 6. WAN <-> DMZ
-- **WAN -> DMZ**
- ```bash
-  ping 19.4.3.9
-  ```
-- **DMZ -> WAN**
- ```bash
-  ping 19.4.3.17
-  ```
-
 #### 3. Configuration des servers
 ###### 3.1 public-server
  ```bash
@@ -519,15 +440,10 @@ Créez un fichier de configuration pour `dnsmasq` sur le pare-feu. Nous allons l
 ```bash
 # Sur le pare-feu
 cat > /etc/dnsmasq.conf << 'EOF'
-# Écouter uniquement sur l'interface LAN
 interface=eth1
-# Ne pas lire /etc/resolv.conf pour les serveurs DNS amont
 no-resolv
-# Utiliser le serveur DNS de Google comme serveur amont (simulé)
 server=8.8.8.8
-# Ajouter les noms du fichier hosts local au DNS
 expand-hosts
-# Domaine pour les requêtes locales
 domain=lan.local
 EOF
 ```
@@ -579,17 +495,12 @@ http_port 3128 intercept
 
 http_port 127.0.0.1:3129
 
-# Définir une ACL pour notre réseau local (LAN)
 acl localnet src 19.4.3.0/29
 
-# Autoriser l'accès pour notre réseau local
-# Cette règle doit être placée avant les règles "deny" par défaut
 http_access allow localnet
 
-# Spécifier le programme de réécriture d'URL (SquidGuard)
 url_rewrite_program /usr/bin/squidGuard -c /etc/squidguard/squidGuard.conf
 
-# Nombre de processus SquidGuard à lancer
 url_rewrite_children 5
 EOF
 ```
@@ -600,24 +511,19 @@ Créez et configurez le fichier `/etc/squidguard/squidGuard.conf` pour définir 
 
 ```bash
 cat >/etc/squidguard/squidGuard.conf<< 'EOF'
-# Emplacement des bases de données de listes noires
 dbhome /var/lib/squidguard/db
 
-# Emplacement des fichiers de log
 logdir /var/log/squid
 
-# Définir la source (notre LAN)
 src lan {
     ip 19.4.3.0/29
 }
 
-# Définir la destination (catégorie "porn")
 dest porn {
     domainlist porn/domains
     urllist porn/urls
 }
 
-# Définir la politique de contrôle d'accès (ACL)
 acl {
     lan {
         pass !porn all
@@ -636,10 +542,8 @@ EOF
 Nous devons créer les fichiers contenant les domaines et URL à bloquer.
 
 ```bash
-# Créer les répertoires nécessaires
 mkdir -p /var/lib/squidguard/db/porn
 
-# Créer le fichier de domaines à bloquer
 cat > /var/lib/squidguard/db/porn/domains << 'EOF'
 pornhub.com
 xvideos.com
@@ -692,8 +596,6 @@ Si la configuration de Squid est valide mais que le service ne démarre toujours
 chown -R proxy:proxy /var/lib/squidguard/db
 chmod -R 755 /var/lib/squidguard/db
 
-# 2. Compilez la base de données et vérifiez les erreurs
-# L'option -d active le mode debug pour voir les erreurs de syntaxe.
 squidGuard -b -d -C all
 ```
 
@@ -717,24 +619,19 @@ Le nouveau contenu complet du fichier de configuration est le suivant :
 
 ```bash
 cat >/etc/squidguard/squidGuard.conf<< 'EOF'
-# Emplacement des bases de données de listes noires
 dbhome /var/lib/squidguard/db
 
-# Emplacement des fichiers de log
 logdir /var/log/squid
 
-# Définir la source (notre LAN)
 src lan {
     ip 19.4.3.0/29
 }
 
-# Définir les plages horaires de travail
 time workhours {
     weekly mtwhf 08:00-12:00
     weekly mtwhf 14:00-18:00
 }
 
-# Définir les destinations à bloquer
 dest porn {
     domainlist porn/domains
     urllist porn/urls
@@ -745,15 +642,12 @@ dest social {
     urllist social/urls
 }
 
-# Définir la politique de contrôle d'accès (ACL)
 acl {
-    # Pendant les heures de travail, bloquer "porn" ET "social"
     lan within workhours {
         pass !porn !social all
         redirect http://19.4.3.3/cgi-bin/squidGuard.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
     }
 
-    # En dehors des heures de travail, bloquer "porn" uniquement
     lan {
         pass !porn all
         redirect http://19.4.3.3/cgi-bin/squidGuard.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
@@ -813,7 +707,6 @@ service dnsmasq restart
 
 # Sur internal-desktop, pendant les heures de travail
 curl http://facebook.com 
-# Devrait être bloqué
 ```
 
 curl depuis le LAN vers facebook à 13h :
@@ -841,10 +734,8 @@ Sur le pare-feu, nous allons ajouter deux règles à la chaîne `FORWARD` : une 
 ```bash
 # Sur le pare-feu
 
-# Limiter le trafic sortant (upload) pour chaque machine du LAN
 iptables -A FORWARD -s $LAN -o $WAN_IFACE -m hashlimit --hashlimit-name lan_upload --hashlimit-mode srcip --hashlimit-above 500kb/s -j DROP
 
-# Limiter le trafic entrant (download) pour chaque machine du LAN
 iptables -A FORWARD -d $LAN -i $WAN_IFACE -m hashlimit --hashlimit-name lan_download --hashlimit-mode dstip --hashlimit-above 500kb/s -j DROP
 ```
 
@@ -912,30 +803,22 @@ Nous créons ensuite un fichier de règles local pour détecter différents type
 ```bash
 # Créer le fichier local.rules
 cat > /etc/snort/rules/local.rules << 'EOF'
-# Règles Snort personnalisées pour la DMZ (serveur 19.4.3.9)
 
 # ==== SCANS DE PORT ====
-# Détection de scan TCP SYN
 alert tcp any any -> $HOME_NET any (msg:"[SCAN] TCP SYN scan détecté"; flags:S,12; threshold:type threshold, track by_src, count 5, seconds 60; classtype:attempted-recon; sid:2000001; rev:1;)
 
-# Détection de scan TCP Connect
 alert tcp any any -> $HOME_NET any (msg:"[SCAN] TCP Connect scan détecté"; flags:S; threshold:type threshold, track by_src, count 10, seconds 60; classtype:attempted-recon; sid:2000002; rev:1;)
 
-# Détection de scan UDP
 alert udp any any -> $HOME_NET any (msg:"[SCAN] UDP scan détecté"; threshold:type threshold, track by_src, count 15, seconds 60; classtype:attempted-recon; sid:2000003; rev:1;)
 
 # ==== ATTAQUES DoS ====
-# Flood ICMP (Ping flood)
 alert icmp any any -> $HOME_NET any (msg:"[DoS] Attaque ICMP flood détectée"; threshold:type threshold, track by_src, count 30, seconds 10; classtype:attempted-dos; sid:2000010; rev:1;)
 
-# Flood TCP SYN
 alert tcp any any -> $HOME_NET any (msg:"[DoS] Attaque SYN flood détectée"; flags:S,12; flow:stateless; threshold:type threshold, track by_src, count 50, seconds 10; classtype:attempted-dos; sid:2000011; rev:1;)
 
 # ==== ATTAQUES WEB ====
-# Injection SQL
 alert tcp any any -> $HOME_NET 80 (msg:"[WEB] Possible injection SQL détectée"; content:"UNION SELECT"; nocase; classtype:web-application-attack; sid:2000020; rev:1;)
 
-# Tentative XSS
 alert tcp any any -> $HOME_NET 80 (msg:"[WEB] Possible attaque XSS détectée"; content:"<script>"; nocase; classtype:web-application-attack; sid:2000022; rev:1;)
 EOF
 ```
@@ -960,8 +843,6 @@ Enfin, nous démarrons Snort avec la configuration mise à jour:
 # Créer le répertoire pour les logs
 mkdir -p /var/log/snort/
 
-# Démarrer Snort
-# snort -D -c /etc/snort/snort.conf -i eth0 -l /var/log/snort/ -A full
 snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort/ -i eth0
 
 ```
