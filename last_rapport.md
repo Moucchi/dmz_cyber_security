@@ -822,7 +822,58 @@ curl http://facebook.com
 # Devrait être bloqué
 
 # Sur internal-desktop, en dehors des heures de travail
-# (Vous pouvez tester en changeant l'heure du container firewall avec `date -s "HH:MM:SS"`)
-curl http://facebook.com
 # Devrait être autorisé
 ```
+
+##### - Limiter la bande passante avec iptables
+
+Pour garantir une utilisation équitable des ressources réseau, nous allons mettre en place une politique de Qualité de Service (QoS) pour limiter la bande passante de chaque machine du LAN à 500 Ko/s. Nous utiliserons le module `hashlimit` d'iptables.
+
+Le module `hashlimit` permet de créer des règles basées sur un taux de paquets ou de données, par adresse IP.
+
+###### 1. Application de la limitation de bande passante
+
+Sur le pare-feu, nous allons ajouter deux règles à la chaîne `FORWARD` : une pour le trafic sortant (upload) et une pour le trafic entrant (download).
+
+- **Limite** : 500 Ko/s, ce qui équivaut à `500kb/s` pour `iptables`.
+- **Mode** : Nous utilisons `--hashlimit-mode srcip` pour le trafic sortant (limiter chaque machine du LAN) et `--hashlimit-mode dstip` pour le trafic entrant.
+
+```bash
+# Sur le pare-feu
+
+# 1. Limiter le trafic sortant (upload) pour chaque machine du LAN
+# Les paquets dépassant 500kb/s pour une IP source seront rejetés.
+iptables -A FORWARD -s $LAN -o $WAN_IFACE -m hashlimit --hashlimit-name lan_upload --hashlimit-mode srcip --hashlimit-above 500kb/s -j DROP
+
+# 2. Limiter le trafic entrant (download) pour chaque machine du LAN
+# Les paquets dépassant 500kb/s pour une IP de destination seront rejetés.
+iptables -A FORWARD -d $LAN -i $WAN_IFACE -m hashlimit --hashlimit-name lan_download --hashlimit-mode dstip --hashlimit-above 500kb/s -j DROP
+```
+
+Ces règles garantissent que ni l'upload ni le download ne dépassent 500 Ko/s pour chaque machine du réseau local.
+
+###### 2. Vérification et Test
+
+Pour vérifier que les règles sont actives, vous pouvez lister les règles de la chaîne `FORWARD` :
+
+```bash
+# Affiche les règles de la table filter
+iptables -L FORWARD -v -n
+```
+
+Pour tester la limitation, vous pouvez générer un fichier volumineux sur le serveur `internet` et le télécharger depuis une machine du LAN en utilisant `wget`.
+
+```bash
+# Sur le serveur 'internet'
+dd if=/dev/zero of=/var/www/html/largefile.img bs=1M count=100
+
+# Sur 'internal-desktop'
+wget http://19.4.3.17/largefile.img
+```
+
+`wget` affichera la vitesse de téléchargement, qui devrait être plafonnée aux alentours de 500 KB/s.
+
+![alt text](image-4.png)
+```
+
+
