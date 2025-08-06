@@ -708,3 +708,121 @@ curl http://pornhub.com
 ```
 La connexion devrait être refusée ou redirigée, confirmant que le filtrage avec SquidGuard est fonctionnel.
 
+##### - Bloquer les réseaux sociaux pendant les heures de travail
+
+Pour aller plus loin, nous allons maintenant implémenter une politique de sécurité plus fine : bloquer l'accès aux réseaux sociaux uniquement pendant les heures de bureau. Nous utiliserons la fonctionnalité de gestion du temps de SquidGuard.
+
+###### 1. Mise à jour de la configuration de SquidGuard
+
+Modifiez le fichier `/etc/squidguard/squidGuard.conf` pour y inclure une définition des plages horaires et une nouvelle catégorie de sites à bloquer ("social"). La section `acl` est également mise à jour pour appliquer des règles différentes en fonction de l'heure.
+
+Le nouveau contenu complet du fichier de configuration est le suivant :
+
+```bash
+cat >/etc/squidguard/squidGuard.conf<< 'EOF'
+# Emplacement des bases de données de listes noires
+dbhome /var/lib/squidguard/db
+
+# Emplacement des fichiers de log
+logdir /var/log/squid
+
+# Définir la source (notre LAN)
+src lan {
+    ip 19.4.3.0/29
+}
+
+# Définir les plages horaires de travail
+time workhours {
+    weekly mtwhf 08:00-12:00
+    weekly mtwhf 14:00-18:00
+}
+
+# Définir les destinations à bloquer
+dest porn {
+    domainlist porn/domains
+    urllist porn/urls
+}
+
+dest social {
+    domainlist social/domains
+    urllist social/urls
+}
+
+# Définir la politique de contrôle d'accès (ACL)
+acl {
+    # Pendant les heures de travail, bloquer "porn" ET "social"
+    lan within workhours {
+        pass !porn !social all
+        redirect http://19.4.3.3/cgi-bin/squidGuard.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
+    }
+
+    # En dehors des heures de travail, bloquer "porn" uniquement
+    lan {
+        pass !porn all
+        redirect http://19.4.3.3/cgi-bin/squidGuard.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
+    }
+
+    default {
+        pass none
+        redirect http://19.4.3.3/cgi-bin/squidGuard.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
+    }
+}
+EOF
+```
+
+###### 2. Création de la liste noire des réseaux sociaux
+
+Ajoutez la liste des domaines de réseaux sociaux à bloquer.
+
+```bash
+# Créer le répertoire et la liste pour les réseaux sociaux
+mkdir -p /var/lib/squidguard/db/social
+
+cat > /var/lib/squidguard/db/social/domains << 'EOF'
+facebook.com
+twitter.com
+instagram.com
+tiktok.com
+linkedin.com
+snapchat.com
+pinterest.com
+EOF
+
+# Créer un fichier d'URLs vide pour cette catégorie également
+touch /var/lib/squidguard/db/social/urls
+```
+
+###### 3. Finalisation et Test
+
+Après avoir modifié la configuration et ajouté la nouvelle liste, vous devez recompiler la base de données de SquidGuard et redémarrer le service, comme à l'étape 5.
+
+```bash
+# Compiler la base de données (inclut maintenant la liste "social")
+squidGuard -b -d -C all
+
+# S'assurer que les permissions sont correctes
+chown -R proxy:proxy /var/lib/squidguard/db
+chmod -R 755 /var/lib/squidguard/db
+
+# Redémarrer Squid
+service squid restart
+```
+
+Pour tester, ajoutez les domaines des réseaux sociaux au fichier `/etc/hosts` du pare-feu (pour que `dnsmasq` les résolve), puis essayez d'y accéder depuis `internal-desktop` avec `curl`.
+
+```bash
+# Sur le pare-feu
+echo "19.4.3.17 facebook.com" >> /etc/hosts
+echo "19.4.3.17 twitter.com" >> /etc/hosts
+
+service dnsmasq restart
+
+# Sur internal-desktop, pendant les heures de travail
+curl http://facebook.com 
+# Devrait être bloqué
+
+# Sur internal-desktop, en dehors des heures de travail
+# (Vous pouvez tester en changeant l'heure du container firewall avec `date -s "HH:MM:SS"`)
+curl http://facebook.com
+# Devrait être autorisé
+```
