@@ -870,16 +870,17 @@ wget http://19.4.3.17/largefile.img
 ```
 
 `wget` affichera la vitesse de téléchargement, qui devrait être plafonnée aux alentours de 500 KB/s.
-![alt text](image-4.png)
+![limite bande passante](image-4.png)
 
 
 #### 3.2. **DMZ**
 **Accessible en HTTP/HTTPS depuis WAN et LAN** et **Ne peut initier aucune connexion sortante** sont déjaà realisés avec la configuration du pare-feu
-LAN -> DMZ 
-![alt text](image-20.png)
+- LAN -> DMZ 
+    - ![alt text](image-20.png)
 
-WAN -> DMZ
-![wan -> dmz](image-19.png)
+- WAN -> DMZ
+    - ![wan -> dmz](image-19.png)
+
 #### 3.3. **Surveillance IDS avec Snort**
 
 ##### Detecter et journaliser les tentatives d'attaque et de scan
@@ -965,8 +966,9 @@ snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort
 
 ```
 
-![nmap internet](image-5.png)
-
-![resultat snort](image-8.png)
-
-![cat log snort](image-9.png)
+- nmap depuis internet vers la DMZ
+    - ![nmap internet](image-5.png)
+- detection de nmap par snort dans la DMZ
+    - ![resultat snort](image-8.png)
+- log snort pour les scans de nmap
+    - ![cat log snort](image-9.png)
