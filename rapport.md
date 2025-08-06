@@ -1,8 +1,84 @@
 # Rapport : Mise en place d’une architecture DMZ via GNS3 et Docker
 
 ## Membres du groupe :
-  - 1979
-  - 2075
+
+- 1979
+- 2000
+- 2075
+
+## Table des matieres :
+
+<!-- TOC -->
+* [Rapport : Mise en place d’une architecture DMZ via GNS3 et Docker](#rapport--mise-en-place-dune-architecture-dmz-via-gns3-et-docker)
+  * [Membres du groupe :](#membres-du-groupe-)
+  * [Table des matieres :](#table-des-matieres-)
+  * [Introduction](#introduction)
+  * [Méthodologie](#méthodologie)
+    * [**Environnement**](#environnement)
+    * [1. **Création des images Docker**](#1-création-des-images-docker)
+      * [1.1 Client LAN (`ubuntu_client`)](#11-client-lan-ubuntu_client)
+      * [1.2 Pare-feu (`ubuntu_firewall`)](#12-pare-feu-ubuntu_firewall)
+      * [1.3 Serveur Web DMZ (`ubuntu_webserver`)](#13-serveur-web-dmz-ubuntu_webserver)
+      * [1.4 Serveur Web LAN (`ubuntu_lan_webserver`)](#14-serveur-web-lan-ubuntu_lan_webserver)
+      * [1.5 WAN (`ubuntu_wan`)](#15-wan-ubuntu_wan)
+    * [2.  **Mise en place de la topologie**](#2-mise-en-place-de-la-topologie)
+      * [2.1 **Création des containers dockers dans gns3**](#21-création-des-containers-dockers-dans-gns3)
+        * [firewall](#firewall)
+        * [public-server](#public-server)
+        * [internal-server](#internal-server)
+        * [internal-desktop](#internal-desktop)
+        * [internet](#internet)
+      * [2.2 **Mise en place de la topologie dans gns3**](#22-mise-en-place-de-la-topologie-dans-gns3)
+        * [1. Instanciation et liaison des containers](#1-instanciation-et-liaison-des-containers)
+          * [Image de la liaison des noeuds :](#image-de-la-liaison-des-noeuds-)
+        * [2. Démarrage et configuration des adresses IP](#2-démarrage-et-configuration-des-adresses-ip)
+          * [a) LAN](#a-lan)
+          * [b) WAN](#b-wan)
+          * [c) DMZ](#c-dmz)
+          * [d) Pare-feu](#d-pare-feu)
+          * [Subnets utilisés](#subnets-utilisés)
+          * [Image de la topologie :](#image-de-la-topologie-)
+      * [3. Configuration des servers](#3-configuration-des-servers)
+          * [3.1 public-server](#31-public-server)
+          * [3.2 internal-server](#32-internal-server)
+          * [3.3 internet](#33-internet)
+    * [3.  **Configuration des services et comportements attendus**](#3-configuration-des-services-et-comportements-attendus)
+      * [3.1. **Pare-feu**](#31-pare-feu)
+        * [- Autoriser HTTP, HTTPS, SSH vers la DMZ (depuis WAN et LAN)](#--autoriser-http-https-ssh-vers-la-dmz-depuis-wan-et-lan)
+        * [- Bloquer tout autre port ou protocole par défaut](#--bloquer-tout-autre-port-ou-protocole-par-défaut)
+        * [- Bloquer l’accès du WAN vers le LAN](#--bloquer-laccès-du-wan-vers-le-lan)
+        * [- Autoriser le LAN à sortir vers l’extérieur via NAT](#--autoriser-le-lan-à-sortir-vers-lextérieur-via-nat)
+        * [- Mise en place d'un serveur DNS (Dnsmasq)](#--mise-en-place-dun-serveur-dns-dnsmasq)
+          * [1. Configuration de Dnsmasq](#1-configuration-de-dnsmasq)
+          * [2. Ajout d'entrées DNS locales](#2-ajout-dentrées-dns-locales)
+          * [3. Démarrage du service](#3-démarrage-du-service)
+          * [4. Configuration des clients DNS](#4-configuration-des-clients-dns)
+          * [5. Test de la résolution DNS](#5-test-de-la-résolution-dns)
+        * [- Bloquer les sites pornographiques (SquidGuard)](#--bloquer-les-sites-pornographiques-squidguard)
+          * [1. Création d'un fichier de configuration personnalisé pour Squid](#1-création-dun-fichier-de-configuration-personnalisé-pour-squid)
+          * [2. Configuration de SquidGuard](#2-configuration-de-squidguard)
+          * [3. Création de la liste noire](#3-création-de-la-liste-noire)
+          * [4. Redirection du trafic avec iptables](#4-redirection-du-trafic-avec-iptables)
+          * [5. Finalisation de la configuration](#5-finalisation-de-la-configuration)
+          * [5.1 Vérification de la configuration](#51-vérification-de-la-configuration)
+          * [5.2 Vérification de SquidGuard](#52-vérification-de-squidguard)
+          * [6. Test du filtrage](#6-test-du-filtrage)
+        * [- Bloquer les réseaux sociaux pendant les heures de travail](#--bloquer-les-réseaux-sociaux-pendant-les-heures-de-travail)
+          * [1. Mise à jour de la configuration de SquidGuard](#1-mise-à-jour-de-la-configuration-de-squidguard)
+          * [2. Création de la liste noire des réseaux sociaux](#2-création-de-la-liste-noire-des-réseaux-sociaux)
+          * [3. Finalisation et Test](#3-finalisation-et-test)
+        * [- Limiter la bande passante avec iptables](#--limiter-la-bande-passante-avec-iptables)
+          * [1. Application de la limitation de bande passante](#1-application-de-la-limitation-de-bande-passante)
+          * [2. Vérification et Test](#2-vérification-et-test)
+      * [3.2. **DMZ**](#32-dmz)
+      * [3.3. **Surveillance IDS avec Snort**](#33-surveillance-ids-avec-snort)
+        * [Detecter et journaliser les tentatives d'attaque et de scan](#detecter-et-journaliser-les-tentatives-dattaque-et-de-scan)
+          * [1. Configuration de base de Snort](#1-configuration-de-base-de-snort)
+          * [2. Modification des variables réseau](#2-modification-des-variables-réseau)
+          * [3. Création de règles de détection personnalisées](#3-création-de-règles-de-détection-personnalisées)
+          * [4. Configuration de la journalisation](#4-configuration-de-la-journalisation)
+          * [5. Démarrage de Snort avec la nouvelle configuration](#5-démarrage-de-snort-avec-la-nouvelle-configuration)
+<!-- TOC -->
 
 ## Introduction
 
@@ -16,11 +92,19 @@ administration réseau et en cybersécurité seront renforcées.
 
 ## Méthodologie
 
+### **Environnement**
+
+- Ubuntu 24.04 Lts sous WSL 2.5.9
+- Docker 28.3.3
+- GN3 2.2.54
+
 La méthodologie suivie pour la réalisation de ce travail pratique s’articule autour des étapes suivantes
 
 ### 1. **Création des images Docker**
 
-La première étape a consisté à créer les images Docker nécessaires pour simuler l'ensemble des machines de notre architecture DMZ. Plusieurs Dockerfiles ont été développés, chacun correspondant à un rôle spécifique dans l'infrastructure :
+La première étape a consisté à créer les images Docker nécessaires pour simuler l'ensemble des machines de notre
+architecture DMZ. Plusieurs Dockerfiles ont été développés, chacun correspondant à un rôle spécifique dans
+l'infrastructure :
 
 #### 1.1 Client LAN (`ubuntu_client`)
 
@@ -43,7 +127,8 @@ RUN apt-get update && apt-get install -y \
     dnsutils
 ```
 
-**Rôle** : Machine cliente utilisée pour tester l'accès depuis le LAN vers la DMZ et Internet, et valider les règles de filtrage du pare-feu.
+**Rôle** : Machine cliente utilisée pour tester l'accès depuis le LAN vers la DMZ et Internet, et valider les règles de
+filtrage du pare-feu.
 
 #### 1.2 Pare-feu (`ubuntu_firewall`)
 
@@ -74,7 +159,8 @@ RUN apt-get update && apt-get install -y \
     cron
 ```
 
-**Rôle** : Pare-feu principal avec filtrage de paquets (iptables), proxy web (Squid), filtrage de contenu (SquidGuard) et outils de monitoring réseau.
+**Rôle** : Pare-feu principal avec filtrage de paquets (iptables), proxy web (Squid), filtrage de contenu (SquidGuard)
+et outils de monitoring réseau.
 
 #### 1.3 Serveur Web DMZ (`ubuntu_webserver`)
 
@@ -103,7 +189,8 @@ RUN apt-get update && apt-get install -y \
     snort 
 ```
 
-**Rôle** : Serveur web Apache situé dans la DMZ, accessible depuis Internet mais isolé du réseau LAN interne. Il intègre également des outils de supervision (`tcpdump`, `net-tools`) et un IDS (`snort`) pour la détection d'intrusions.
+**Rôle** : Serveur web Apache situé dans la DMZ, accessible depuis Internet mais isolé du réseau LAN interne. Il intègre
+également des outils de supervision (`tcpdump`, `net-tools`) et un IDS (`snort`) pour la détection d'intrusions.
 
 #### 1.4 Serveur Web LAN (`ubuntu_lan_webserver`)
 
@@ -156,35 +243,42 @@ RUN apt-get update && apt-get install -y \
 
 **Rôle** : Machine externe utilisée pour simuler des connexions depuis Internet et tester les règles de sécurité.
 
-Toutes ces images utilisent Ubuntu 20.04 comme base et incluent la variable d'environnement `DEBIAN_FRONTEND=noninteractive` pour automatiser l'installation des paquets sans interaction utilisateur.
+Toutes ces images utilisent Ubuntu 20.04 comme base et incluent la variable d'environnement
+`DEBIAN_FRONTEND=noninteractive` pour automatiser l'installation des paquets sans interaction utilisateur.
 
 ### 2.  **Mise en place de la topologie**
 
 #### 2.1 **Création des containers dockers dans gns3**
+
 ##### firewall
+
 - docker image : ubuntu_firewall
 - interfaces : 3
 - console : telnet
 
 ##### public-server
-  - docker image : ubuntu_webserver
-  - interfaces : 1
-  - console : telnet
+
+- docker image : ubuntu_webserver
+- interfaces : 1
+- console : telnet
 
 ##### internal-server
-  - docker image : ubuntu_lan_webserver
-  - interfaces : 1
-  - console : telnet
+
+- docker image : ubuntu_lan_webserver
+- interfaces : 1
+- console : telnet
 
 ##### internal-desktop
-  - docker image : ubuntu_client
-  - interfaces : 1
-  - console : telnet
+
+- docker image : ubuntu_client
+- interfaces : 1
+- console : telnet
 
 ##### internet
-  - docker image : ubuntu_wan
-  - interfaces : 1
-  - console : telnet
+
+- docker image : ubuntu_wan
+- interfaces : 1
+- console : telnet
 
 #### 2.2 **Mise en place de la topologie dans gns3**
 
@@ -197,32 +291,33 @@ On commence par instancier les containers et les relier comme dans la figure ci-
 **Structure réseau :**
 
 - **dmz-switch**
-  - e0 ←→ eth2 firewall
-  - e1 ←→ eth0 public-server
+    - e0 ←→ eth2 firewall
+    - e1 ←→ eth0 public-server
 
 - **firewall**
-  - eth0 ←→ e0 internal-switch
-  - eth1 ←→ e0 internal-switch
-  - eth2 ←→ e1 dmz-switch
+    - eth0 ←→ e0 internal-switch
+    - eth1 ←→ e0 internal-switch
+    - eth2 ←→ e1 dmz-switch
 
 - **internal-desktop**
-  - eth0 ←→ e1 internal-switch
+    - eth0 ←→ e1 internal-switch
 
 - **internal-server**
-  - eth0 ←→ e2 internal-switch
+    - eth0 ←→ e2 internal-switch
 
 - **internal-switch**
-  - e0 ←→ eth1 firewall
-  - e1 ←→ eth0 internal-desktop
-  - e2 ←→ eth0 internal-server
+    - e0 ←→ eth1 firewall
+    - e1 ←→ eth0 internal-desktop
+    - e2 ←→ eth0 internal-server
 
 - **internet**
-  - eth0 ←→ eth0 firewall
+    - eth0 ←→ eth0 firewall
 
 - **public-server**
-  - eth0 ←→ e1 dmz-switch
+    - eth0 ←→ e1 dmz-switch
 
 ###### Image de la liaison des noeuds :
+
 ![Liaison des noeuds](image.png)
 
 ##### 2. Démarrage et configuration des adresses IP
@@ -230,6 +325,7 @@ On commence par instancier les containers et les relier comme dans la figure ci-
 Après le démarrage de toutes les instances, on configure leurs adresses IP comme suit :
 
 ###### a) LAN
+
 - **internal-desktop**
   ```bash
   ip a add 19.4.3.1/29 dev eth0
@@ -244,6 +340,7 @@ Après le démarrage de toutes les instances, on configure leurs adresses IP com
   ```
 
 ###### b) WAN
+
 - **internet**
   ```bash
   ip a add 19.4.3.17/29 dev eth0
@@ -251,6 +348,7 @@ Après le démarrage de toutes les instances, on configure leurs adresses IP com
   ```
 
 ###### c) DMZ
+
 - **public-server (DMZ)**
   ```bash
   ip a add 19.4.3.9/29 dev eth0
@@ -258,6 +356,7 @@ Après le démarrage de toutes les instances, on configure leurs adresses IP com
   ```
 
 ###### d) Pare-feu
+
 - **firewall**
   ```bash
   ip a add 19.4.3.3/29 dev eth1
@@ -267,6 +366,7 @@ Après le démarrage de toutes les instances, on configure leurs adresses IP com
   ```
 
 ###### Subnets utilisés
+
 ```bash
 WAN="19.4.3.16/29"
 LAN="19.4.3.0/29"
@@ -274,10 +374,13 @@ DMZ="19.4.3.8/29"
 ```
 
 ###### Image de la topologie :
+
 ![Image topologie](image_topologie.png)
 
 #### 3. Configuration des servers
+
 ###### 3.1 public-server
+
  ```bash
 echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
 a2enconf servername
@@ -336,6 +439,7 @@ service ssh start
   ```
 
 ###### 3.2 internal-server
+
  ```bash
   echo "ServerName localhost" | tee /etc/apache2/conf-available/servername.conf
   a2enconf servername
@@ -353,6 +457,7 @@ service ssh start
   </html>" > /var/www/html/index.html
 
   ```
+
 ###### 3.3 internet
 
 ```bash
@@ -374,8 +479,11 @@ echo "<html>
 ```
 
 ### 3.  **Configuration des services et comportements attendus**
+
 #### 3.1. **Pare-feu**
+
 On definit tout d'abors les varables à utiliser :
+
  ```bash
   WAN="19.4.3.16/29"
   LAN="19.4.3.0/29"
@@ -389,9 +497,11 @@ On definit tout d'abors les varables à utiliser :
   DMZ_IFACE="eth2"
   ```
 
-Etant donné qu'on a crée l'image docker à partir d'une image **ubuntu vierge** et qu'on a **nous meme installé les packets necessaires**, **``iptables`` ne contient encore aucune regle**.
+Etant donné qu'on a crée l'image docker à partir d'une image **ubuntu vierge** et qu'on a **nous meme installé les
+packets necessaires**, **``iptables`` ne contient encore aucune regle**.
 
 ##### - Autoriser HTTP, HTTPS, SSH vers la DMZ (depuis WAN et LAN)
+
  ```bash
   iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ -m multiport --dports $HTTP,$HTTPS,$SSH -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
   iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
@@ -399,18 +509,22 @@ Etant donné qu'on a crée l'image docker à partir d'une image **ubuntu vierge*
 
 ![Autoriser HTTP, HTTPS, SSH vers la DMZ ](image-1.png)
 
-##### -  Bloquer tout autre port ou protocole par défaut
+##### - Bloquer tout autre port ou protocole par défaut
+
  ```bash
   iptables -P FORWARD DROP
   ```
 
 ![Bloquer tout autre port ou protocole par défaut](image-3.png)
 
-##### -  Bloquer l’accès du WAN vers le LAN
+##### - Bloquer l’accès du WAN vers le LAN
+
 Déja inclut avec :
+
  ```bash
   iptables -P FORWARD DROP
   ```
+
 curl du server LAN local vers lui meme :
 ![curl localhost intrernal server](image-11.png)
 
@@ -418,24 +532,30 @@ curl depuis le WAN vers me server LAN local :
 ![WAN vers LAN](image-10.png)
 
 ##### - Autoriser le LAN à sortir vers l’extérieur via NAT
+
  ```bash
   iptables -t nat -A POSTROUTING -s $LAN -o $WAN_IFACE -j MASQUERADE
   iptables -A FORWARD -s $LAN -o $WAN_IFACE -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
   iptables -A FORWARD -s $WAN -i $WAN_IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
   ```
+
 ![Autoriser le LAN à sortir vers l’extérieur via NAT](image-2.png)
-- ping depuis LAN vers WAN : 
-  - ![alt text](image-6.png)
+
+- ping depuis LAN vers WAN :
+    - ![alt text](image-6.png)
 - affichage des packets dans internet :
-  - ![alt text](image-7.png)
+    - ![alt text](image-7.png)
 
 ##### - Mise en place d'un serveur DNS (Dnsmasq)
 
-Pour simplifier la résolution de noms dans notre topologie, nous allons configurer `dnsmasq` sur le pare-feu. Ce service agira comme un serveur DNS pour le LAN, résolvant les noms de domaine de notre réseau local et transférant les autres requêtes à des serveurs DNS externes (simulés ou réels).
+Pour simplifier la résolution de noms dans notre topologie, nous allons configurer `dnsmasq` sur le pare-feu. Ce service
+agira comme un serveur DNS pour le LAN, résolvant les noms de domaine de notre réseau local et transférant les autres
+requêtes à des serveurs DNS externes (simulés ou réels).
 
 ###### 1. Configuration de Dnsmasq
 
-Créez un fichier de configuration pour `dnsmasq` sur le pare-feu. Nous allons le configurer pour qu'il écoute uniquement sur l'interface du LAN et utilise le fichier `/etc/hosts` du pare-feu comme source pour les noms locaux.
+Créez un fichier de configuration pour `dnsmasq` sur le pare-feu. Nous allons le configurer pour qu'il écoute uniquement
+sur l'interface du LAN et utilise le fichier `/etc/hosts` du pare-feu comme source pour les noms locaux.
 
 ```bash
 # Sur le pare-feu
@@ -450,12 +570,14 @@ EOF
 
 ###### 2. Ajout d'entrées DNS locales
 
-Pour que notre test de filtrage fonctionne sans modifier le fichier `/etc/hosts` de chaque client, nous pouvons ajouter l'entrée directement dans le fichier `/etc/hosts` du pare-feu. `dnsmasq` le servira ensuite à tout le LAN.
+Pour que notre test de filtrage fonctionne sans modifier le fichier `/etc/hosts` de chaque client, nous pouvons ajouter
+l'entrée directement dans le fichier `/etc/hosts` du pare-feu. `dnsmasq` le servira ensuite à tout le LAN.
 
 ```bash
 # Sur le pare-feu
 echo "19.4.3.17 pornhub.com" >> /etc/hosts
 ```
+
 ###### 3. Démarrage du service
 
 ```bash
@@ -465,11 +587,13 @@ service dnsmasq start
 
 ###### 4. Configuration des clients DNS
 
-Nous avons déjà mis à jour la configuration des machines du LAN à l'étape 2.2 pour qu'elles utilisent le pare-feu (`19.4.3.3`) comme serveur DNS.
+Nous avons déjà mis à jour la configuration des machines du LAN à l'étape 2.2 pour qu'elles utilisent le pare-feu (
+`19.4.3.3`) comme serveur DNS.
 
 ###### 5. Test de la résolution DNS
 
-Depuis `internal-desktop`, vous pouvez maintenant utiliser `nslookup` ou `dig` pour vérifier que la résolution de noms fonctionne.
+Depuis `internal-desktop`, vous pouvez maintenant utiliser `nslookup` ou `dig` pour vérifier que la résolution de noms
+fonctionne.
 
 ```bash
 # Sur internal-desktop
@@ -478,14 +602,15 @@ nslookup pornhub.com
 
 La réponse devrait être `19.4.3.17`.
 
-
 ##### - Bloquer les sites pornographiques (SquidGuard)
 
-Pour bloquer l'accès à des sites spécifiques, nous utiliserons Squid comme proxy transparent et SquidGuard comme filtre d'URL. Le trafic HTTP du LAN sera redirigé vers Squid, qui le passera à SquidGuard pour inspection.
+Pour bloquer l'accès à des sites spécifiques, nous utiliserons Squid comme proxy transparent et SquidGuard comme filtre
+d'URL. Le trafic HTTP du LAN sera redirigé vers Squid, qui le passera à SquidGuard pour inspection.
 
 ###### 1. Création d'un fichier de configuration personnalisé pour Squid
 
-Pour éviter les conflits avec la configuration par défaut, nous allons créer un fichier séparé qui contiendra nos directives. Squid lira ce fichier et appliquera nos règles.
+Pour éviter les conflits avec la configuration par défaut, nous allons créer un fichier séparé qui contiendra nos
+directives. Squid lira ce fichier et appliquera nos règles.
 
 Créez le fichier `/etc/squid/conf.d/00-custom.conf` sur le pare-feu :
 
@@ -557,9 +682,11 @@ touch /var/lib/squidguard/db/porn/urls
 
 ###### 4. Redirection du trafic avec iptables
 
-Ajoutez une règle `iptables` sur le pare-feu pour rediriger tout le trafic HTTP (port 80) provenant du LAN vers le port de Squid (3128).
+Ajoutez une règle `iptables` sur le pare-feu pour rediriger tout le trafic HTTP (port 80) provenant du LAN vers le port
+de Squid (3128).
 
 Rediriger le trafic HTTP du LAN vers Squid
+
 ```bash
 iptables -t nat -A PREROUTING -i $LAN_IFACE -p tcp --dport 80 -j REDIRECT --to-port 3128
 ```
@@ -580,17 +707,20 @@ service squid restart
 
 ###### 5.1 Vérification de la configuration
 
-Avant de redémarrer Squid, il est crucial de vérifier que les fichiers de configuration ne contiennent pas d'erreurs de syntaxe.
+Avant de redémarrer Squid, il est crucial de vérifier que les fichiers de configuration ne contiennent pas d'erreurs de
+syntaxe.
 
 ```bash
 squid -k parse
 ```
 
-Si cette commande ne retourne aucune erreur, vous pouvez continuer. Sinon, vous devrez corriger les erreurs indiquées dans `squid.conf` avant de poursuivre.
+Si cette commande ne retourne aucune erreur, vous pouvez continuer. Sinon, vous devrez corriger les erreurs indiquées
+dans `squid.conf` avant de poursuivre.
 
 ###### 5.2 Vérification de SquidGuard
 
-Si la configuration de Squid est valide mais que le service ne démarre toujours pas, le problème vient probablement de SquidGuard.
+Si la configuration de Squid est valide mais que le service ne démarre toujours pas, le problème vient probablement de
+SquidGuard.
 
 ```bash
 chown -R proxy:proxy /var/lib/squidguard/db
@@ -601,19 +731,25 @@ squidGuard -b -d -C all
 
 ###### 6. Test du filtrage
 
-Dans notre topologie simulée, les machines du LAN n'ont pas accès à un serveur DNS public pour résoudre les noms de domaine comme `pornhub.com`. Pour pouvoir tester notre configuration, nous avons deja utilisé `dnsmasq`.
+Dans notre topologie simulée, les machines du LAN n'ont pas accès à un serveur DNS public pour résoudre les noms de
+domaine comme `pornhub.com`. Pour pouvoir tester notre configuration, nous avons deja utilisé `dnsmasq`.
 Il ne nous reste plus qu'à executer la commande :
+
 ```bash
 curl http://pornhub.com
 ```
+
 ![curl LAN vers pornhub](image-12.png)
 
 ##### - Bloquer les réseaux sociaux pendant les heures de travail
+
 Nous utiliserons la fonctionnalité de gestion du temps de SquidGuard.
 
 ###### 1. Mise à jour de la configuration de SquidGuard
 
-Modifiez le fichier `/etc/squidguard/squidGuard.conf` pour y inclure une définition des plages horaires et une nouvelle catégorie de sites à bloquer ("social"). La section `acl` est également mise à jour pour appliquer des règles différentes en fonction de l'heure.
+Modifiez le fichier `/etc/squidguard/squidGuard.conf` pour y inclure une définition des plages horaires et une nouvelle
+catégorie de sites à bloquer ("social"). La section `acl` est également mise à jour pour appliquer des règles
+différentes en fonction de l'heure.
 
 Le nouveau contenu complet du fichier de configuration est le suivant :
 
@@ -665,7 +801,9 @@ EOF
 
 Ajoutez la liste des domaines de réseaux sociaux à bloquer.
 
-Créer le répertoire et la liste pour les réseaux sociaux, lister les domaines et creer le fichier contenant les urls (pour ne pas avoir d'erreur lors de la verofocation du ficher de configuration)
+Créer le répertoire et la liste pour les réseaux sociaux, lister les domaines et creer le fichier contenant les urls (
+pour ne pas avoir d'erreur lors de la verofocation du ficher de configuration)
+
 ```bash
 mkdir -p /var/lib/squidguard/db/social
 
@@ -684,9 +822,12 @@ touch /var/lib/squidguard/db/social/urls
 
 ###### 3. Finalisation et Test
 
-Après avoir modifié la configuration et ajouté la nouvelle liste, vous devez recompiler la base de données de SquidGuard et redémarrer le service, comme à l'étape 5.
+Après avoir modifié la configuration et ajouté la nouvelle liste, vous devez recompiler la base de données de SquidGuard
+et redémarrer le service, comme à l'étape 5.
 
-Compiler la base de données (inclut maintenant la liste "social"), s'assurer que les permissions sont correctes et redemarrer squid
+Compiler la base de données (inclut maintenant la liste "social"), s'assurer que les permissions sont correctes et
+redemarrer squid
+
 ```bash
 squidGuard -b -d -C all
 
@@ -696,7 +837,8 @@ chmod -R 755 /var/lib/squidguard/db
 service squid restart
 ```
 
-Pour tester, ajoutez les domaines des réseaux sociaux au fichier `/etc/hosts` du pare-feu (pour que `dnsmasq` les résolve), puis essayez d'y accéder depuis `internal-desktop` avec `curl`.
+Pour tester, ajoutez les domaines des réseaux sociaux au fichier `/etc/hosts` du pare-feu (pour que `dnsmasq` les
+résolve), puis essayez d'y accéder depuis `internal-desktop` avec `curl`.
 
 ```bash
 # Sur le pare-feu
@@ -720,16 +862,20 @@ curl depuis le LAN vers facebook à durant les heures de travail:
 
 ##### - Limiter la bande passante avec iptables
 
-Pour garantir une utilisation équitable des ressources réseau, nous allons mettre en place une politique de Qualité de Service (QoS) pour limiter la bande passante de chaque machine du LAN à 500 Ko/s. Nous utiliserons le module `hashlimit` d'iptables.
+Pour garantir une utilisation équitable des ressources réseau, nous allons mettre en place une politique de Qualité de
+Service (QoS) pour limiter la bande passante de chaque machine du LAN à 500 Ko/s. Nous utiliserons le module `hashlimit`
+d'iptables.
 
 Le module `hashlimit` permet de créer des règles basées sur un taux de paquets ou de données, par adresse IP.
 
 ###### 1. Application de la limitation de bande passante
 
-Sur le pare-feu, nous allons ajouter deux règles à la chaîne `FORWARD` : une pour le trafic sortant (upload) et une pour le trafic entrant (download).
+Sur le pare-feu, nous allons ajouter deux règles à la chaîne `FORWARD` : une pour le trafic sortant (upload) et une pour
+le trafic entrant (download).
 
 - **Limite** : 500 Ko/s, ce qui équivaut à `500kb/s` pour `iptables`.
-- **Mode** : Nous utilisons `--hashlimit-mode srcip` pour le trafic sortant (limiter chaque machine du LAN) et `--hashlimit-mode dstip` pour le trafic entrant.
+- **Mode** : Nous utilisons `--hashlimit-mode srcip` pour le trafic sortant (limiter chaque machine du LAN) et
+  `--hashlimit-mode dstip` pour le trafic entrant.
 
 ```bash
 # Sur le pare-feu
@@ -748,9 +894,11 @@ Pour vérifier que les règles sont actives, vous pouvez lister les règles de l
 ```bash
 iptables -L FORWARD -v -n
 ```
+
 ![limite de bande passante avec iptables](image-17.png)
 
-Pour tester la limitation, vous pouvez générer un fichier volumineux sur le serveur `internet` et le télécharger depuis une machine du LAN en utilisant `wget`.
+Pour tester la limitation, vous pouvez générer un fichier volumineux sur le serveur `internet` et le télécharger depuis
+une machine du LAN en utilisant `wget`.
 
 ```bash
 # Sur le serveur 'internet'
@@ -763,10 +911,12 @@ wget http://19.4.3.17/largefile.img
 `wget` affichera la vitesse de téléchargement, qui devrait être plafonnée aux alentours de 500 KB/s.
 ![limite bande passante](image-4.png)
 
-
 #### 3.2. **DMZ**
-**Accessible en HTTP/HTTPS depuis WAN et LAN** et **Ne peut initier aucune connexion sortante** sont déjaà realisés avec la configuration du pare-feu
-- LAN -> DMZ 
+
+**Accessible en HTTP/HTTPS depuis WAN et LAN** et **Ne peut initier aucune connexion sortante** sont déjaà realisés avec
+la configuration du pare-feu
+
+- LAN -> DMZ
     - ![alt text](image-20.png)
 
 - WAN -> DMZ
@@ -778,13 +928,14 @@ wget http://19.4.3.17/largefile.img
 
 ###### 1. Configuration de base de Snort
 
-On commence par faire un backup du fichier de configuration principal de snort 
+On commence par faire un backup du fichier de configuration principal de snort
 
 ```bash
 cp /etc/snort/snort.conf /etc/snort/snort.conf.bak
 ```
 
-Nous allons configurer Snort pour qu'il détecte et journalise les tentatives d'attaque et de scan sur notre serveur DMZ (19.4.3.9).
+Nous allons configurer Snort pour qu'il détecte et journalise les tentatives d'attaque et de scan sur notre serveur
+DMZ (19.4.3.9).
 
 ###### 2. Modification des variables réseau
 
@@ -825,7 +976,8 @@ EOF
 
 ###### 4. Configuration de la journalisation
 
-Pour assurer un suivi complet des attaques détectées, nous configurons plusieurs formats de journalisation dans snort.conf:
+Pour assurer un suivi complet des attaques détectées, nous configurons plusieurs formats de journalisation dans
+snort.conf:
 
 ```bash
 # Dans /etc/snort/snort.conf
