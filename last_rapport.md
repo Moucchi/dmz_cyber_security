@@ -643,7 +643,6 @@ redtube.com
 youporn.com
 EOF
 
-# Créer un fichier d'URLs (même si vide pour l'instant)
 touch /var/lib/squidguard/db/porn/urls
 ```
 
@@ -651,8 +650,8 @@ touch /var/lib/squidguard/db/porn/urls
 
 Ajoutez une règle `iptables` sur le pare-feu pour rediriger tout le trafic HTTP (port 80) provenant du LAN vers le port de Squid (3128).
 
+Rediriger le trafic HTTP du LAN vers Squid
 ```bash
-# Rediriger le trafic HTTP du LAN vers Squid
 iptables -t nat -A PREROUTING -i $LAN_IFACE -p tcp --dport 80 -j REDIRECT --to-port 3128
 ```
 
@@ -661,15 +660,12 @@ iptables -t nat -A PREROUTING -i $LAN_IFACE -p tcp --dport 80 -j REDIRECT --to-p
 Compilez la base de données de SquidGuard, ajustez les permissions et redémarrez les services.
 
 ```bash
-# Compiler la base de données de la liste noire
 squidGuard -b -d -C all
 
-# Donner les permissions correctes aux répertoires
 chown -R proxy:proxy /var/lib/squidguard/db
 chown -R proxy:proxy /var/log/squid
 chmod -R 755 /var/lib/squidguard/db
 
-# Redémarrer Squid pour appliquer les changements
 service squid restart
 ```
 
@@ -678,7 +674,6 @@ service squid restart
 Avant de redémarrer Squid, il est crucial de vérifier que les fichiers de configuration ne contiennent pas d'erreurs de syntaxe.
 
 ```bash
-# Vérifier la syntaxe du fichier de configuration de Squid
 squid -k parse
 ```
 
@@ -686,11 +681,9 @@ Si cette commande ne retourne aucune erreur, vous pouvez continuer. Sinon, vous 
 
 ###### 5.2 Vérification de SquidGuard
 
-Si la configuration de Squid est valide mais que le service ne démarre toujours pas, le problème vient probablement de SquidGuard. Voici comment le diagnostiquer.
+Si la configuration de Squid est valide mais que le service ne démarre toujours pas, le problème vient probablement de SquidGuard.
 
 ```bash
-# 1. Vérifiez les permissions des listes noires
-# Cette commande doit être exécutée après la création des listes.
 chown -R proxy:proxy /var/lib/squidguard/db
 chmod -R 755 /var/lib/squidguard/db
 
@@ -774,8 +767,8 @@ EOF
 
 Ajoutez la liste des domaines de réseaux sociaux à bloquer.
 
+Créer le répertoire et la liste pour les réseaux sociaux, lister les domaines et creer le fichier contenant les urls (pour ne pas avoir d'erreur lors de la verofocation du ficher de configuration)
 ```bash
-# Créer le répertoire et la liste pour les réseaux sociaux
 mkdir -p /var/lib/squidguard/db/social
 
 cat > /var/lib/squidguard/db/social/domains << 'EOF'
@@ -788,7 +781,6 @@ snapchat.com
 pinterest.com
 EOF
 
-# Créer un fichier d'URLs vide pour cette catégorie également
 touch /var/lib/squidguard/db/social/urls
 ```
 
@@ -796,15 +788,13 @@ touch /var/lib/squidguard/db/social/urls
 
 Après avoir modifié la configuration et ajouté la nouvelle liste, vous devez recompiler la base de données de SquidGuard et redémarrer le service, comme à l'étape 5.
 
+Compiler la base de données (inclut maintenant la liste "social"), s'assurer que les permissions sont correctes et redemarrer squid
 ```bash
-# Compiler la base de données (inclut maintenant la liste "social")
 squidGuard -b -d -C all
 
-# S'assurer que les permissions sont correctes
 chown -R proxy:proxy /var/lib/squidguard/db
 chmod -R 755 /var/lib/squidguard/db
 
-# Redémarrer Squid
 service squid restart
 ```
 
@@ -821,8 +811,6 @@ service dnsmasq restart
 curl http://facebook.com 
 # Devrait être bloqué
 
-# Sur internal-desktop, en dehors des heures de travail
-# Devrait être autorisé
 ```
 
 ##### - Limiter la bande passante avec iptables
@@ -841,12 +829,10 @@ Sur le pare-feu, nous allons ajouter deux règles à la chaîne `FORWARD` : une 
 ```bash
 # Sur le pare-feu
 
-# 1. Limiter le trafic sortant (upload) pour chaque machine du LAN
-# Les paquets dépassant 500kb/s pour une IP source seront rejetés.
+# Limiter le trafic sortant (upload) pour chaque machine du LAN
 iptables -A FORWARD -s $LAN -o $WAN_IFACE -m hashlimit --hashlimit-name lan_upload --hashlimit-mode srcip --hashlimit-above 500kb/s -j DROP
 
-# 2. Limiter le trafic entrant (download) pour chaque machine du LAN
-# Les paquets dépassant 500kb/s pour une IP de destination seront rejetés.
+# Limiter le trafic entrant (download) pour chaque machine du LAN
 iptables -A FORWARD -d $LAN -i $WAN_IFACE -m hashlimit --hashlimit-name lan_download --hashlimit-mode dstip --hashlimit-above 500kb/s -j DROP
 ```
 
@@ -857,7 +843,6 @@ Ces règles garantissent que ni l'upload ni le download ne dépassent 500 Ko/s p
 Pour vérifier que les règles sont actives, vous pouvez lister les règles de la chaîne `FORWARD` :
 
 ```bash
-# Affiche les règles de la table filter
 iptables -L FORWARD -v -n
 ```
 
@@ -875,34 +860,96 @@ wget http://19.4.3.17/largefile.img
 ![alt text](image-4.png)
 
 
-##### Configuration de Snort sur le serveur DMZ
+#### 3.2. **DMZ**
+**Accessible en HTTP/HTTPS depuis WAN et LAN** et **Ne peut initier aucune connexion sortante** sont déjaà realisés avec la configuration du pare-feu
+
+#### 3.3. **Surveillance IDS avec Snort**
+
+##### Detecter et journaliser les tentatives d'attaque et de scan
+
+###### 1. Configuration de base de Snort
 
 On commence par faire un backup du fichier de configuration principal de snort 
 
 ```bash
 cp /etc/snort/snort.conf /etc/snort/snort.conf.bak
 ```
-Il faut ensuite changer la valeur de `HOME_NET` à la plage du DMZ et definir la valeur des reseaux externes 
-```bash
-ipvar HOME_NET 19.4.3.8/29
 
-# Set up the external network addresses. Leave as "any" in most situations
+Nous allons configurer Snort pour qu'il détecte et journalise les tentatives d'attaque et de scan sur notre serveur DMZ (19.4.3.9).
+
+###### 2. Modification des variables réseau
+
+D'abord, nous modifions les variables de réseau dans snort.conf pour cibler spécifiquement notre serveur DMZ:
+
+```bash
+# Dans /etc/snort/snort.conf
+ipvar HOME_NET 19.4.3.9
 ipvar EXTERNAL_NET !$HOME_NET
 ```
 
-Ajouter une regle personnalisée pour permettre de detecter les scans de port
+###### 3. Création de règles de détection personnalisées
+
+Nous créons ensuite un fichier de règles local pour détecter différents types d'attaques:
+
 ```bash
-cat >> /etc/snort/rules/local.rules << 'EOF'
-alert tcp any any -> 19.4.3.9 any ( msg:"Misy mijerijery letie";  sid:100001; rev:1; )
-snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+# Créer le fichier local.rules
+cat > /etc/snort/rules/local.rules << 'EOF'
+# Règles Snort personnalisées pour la DMZ (serveur 19.4.3.9)
+
+# ==== SCANS DE PORT ====
+# Détection de scan TCP SYN
+alert tcp any any -> $HOME_NET any (msg:"[SCAN] TCP SYN scan détecté"; flags:S,12; threshold:type threshold, track by_src, count 5, seconds 60; classtype:attempted-recon; sid:2000001; rev:1;)
+
+# Détection de scan TCP Connect
+alert tcp any any -> $HOME_NET any (msg:"[SCAN] TCP Connect scan détecté"; flags:S; threshold:type threshold, track by_src, count 10, seconds 60; classtype:attempted-recon; sid:2000002; rev:1;)
+
+# Détection de scan UDP
+alert udp any any -> $HOME_NET any (msg:"[SCAN] UDP scan détecté"; threshold:type threshold, track by_src, count 15, seconds 60; classtype:attempted-recon; sid:2000003; rev:1;)
+
+# ==== ATTAQUES DoS ====
+# Flood ICMP (Ping flood)
+alert icmp any any -> $HOME_NET any (msg:"[DoS] Attaque ICMP flood détectée"; threshold:type threshold, track by_src, count 30, seconds 10; classtype:attempted-dos; sid:2000010; rev:1;)
+
+# Flood TCP SYN
+alert tcp any any -> $HOME_NET any (msg:"[DoS] Attaque SYN flood détectée"; flags:S,12; flow:stateless; threshold:type threshold, track by_src, count 50, seconds 10; classtype:attempted-dos; sid:2000011; rev:1;)
+
+# ==== ATTAQUES WEB ====
+# Injection SQL
+alert tcp any any -> $HOME_NET 80 (msg:"[WEB] Possible injection SQL détectée"; content:"UNION SELECT"; nocase; classtype:web-application-attack; sid:2000020; rev:1;)
+
+# Tentative XSS
+alert tcp any any -> $HOME_NET 80 (msg:"[WEB] Possible attaque XSS détectée"; content:"<script>"; nocase; classtype:web-application-attack; sid:2000022; rev:1;)
 EOF
 ```
 
-Verifier la validité du fichier de configuration :
+###### 4. Configuration de la journalisation
+
+Pour assurer un suivi complet des attaques détectées, nous configurons plusieurs formats de journalisation dans snort.conf:
+
 ```bash
-snort -T -c /etc/snort/snort.conf -i eth0
+# Dans /etc/snort/snort.conf
+output unified2: filename snort.log, limit 128, nostamp, mpls_event_types, vlan_event_types
+output log_tcpdump: /var/log/snort/tcpdump.log
+output alert_fast: /var/log/snort/alert.fast
+output alert_csv: /var/log/snort/alert.csv default
 ```
-Lancer snort 
+
+###### 5. Démarrage de Snort avec la nouvelle configuration
+
+Enfin, nous démarrons Snort avec la configuration mise à jour:
+
 ```bash
-snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+# Créer le répertoire pour les logs
+mkdir -p /var/log/snort/
+
+# Démarrer Snort
+# snort -D -c /etc/snort/snort.conf -i eth0 -l /var/log/snort/ -A full
+snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort/ -i eth0
+
 ```
+
+![nmap internet](image-5.png)
+
+![resultat snort](image-8.png)
+
+![cat log snort](image-9.png)
