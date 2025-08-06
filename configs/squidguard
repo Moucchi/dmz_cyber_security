@@ -1,0 +1,83 @@
+cat >/etc/squid/conf.d/00-custom.conf<< 'EOF'
+http_port 3128 intercept
+
+http_port 127.0.0.1:3129
+
+# Définir une ACL pour notre réseau local (LAN)
+acl localnet src 19.4.3.0/29
+
+# Autoriser l'accès pour notre réseau local
+# Cette règle doit être placée avant les règles "deny" par défaut
+http_access allow localnet
+
+# Spécifier le programme de réécriture d'URL (SquidGuard)
+url_rewrite_program /usr/bin/squidGuard -c /etc/squidguard/squidGuard.conf
+
+# Nombre de processus SquidGuard à lancer
+url_rewrite_children 5
+EOF
+
+cat >/etc/squidguard/squidGuard.conf<< 'EOF'
+# Emplacement des bases de données de listes noires
+dbhome /var/lib/squidguard/db
+
+# Emplacement des fichiers de log
+logdir /var/log/squid
+
+# Définir la source (notre LAN)
+src lan {
+    ip 19.4.3.0/29
+}
+
+# Définir la destination (catégorie "porn")
+dest porn {
+    domainlist porn/domains
+    urllist porn/urls
+}
+
+# Définir la politique de contrôle d'accès (ACL)
+acl {
+    lan {
+        pass !porn all
+        redirect http://19.4.3.3/cgi-bin/squidGuard.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
+    }
+    default {
+        pass none
+        redirect http://19.4.3.3/cgi-bin/squidGuard.cgi?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&targetgroup=%t&url=%u
+    }
+}
+EOF
+
+###### 3. Création de la liste noire
+mkdir -p /var/lib/squidguard/db/porn
+
+# Créer le fichier de domaines à bloquer
+cat > /var/lib/squidguard/db/porn/domains << 'EOF'
+pornhub.com
+xvideos.com
+xnxx.com
+redtube.com
+youporn.com
+EOF
+
+touch /var/lib/squidguard/db/porn/urls
+
+# Rediriger le trafic HTTP du LAN vers Squid
+```bash
+iptables -t nat -A PREROUTING -i $LAN_IFACE -p tcp --dport 80 -j REDIRECT --to-port 3128
+```
+
+squidGuard -b -d -C all
+
+chown -R proxy:proxy /var/lib/squidguard/db
+chown -R proxy:proxy /var/log/squid
+chmod -R 755 /var/lib/squidguard/db
+
+service squid restart
+
+squid -k parse
+
+chown -R proxy:proxy /var/lib/squidguard/db
+chmod -R 755 /var/lib/squidguard/db
+
+squidGuard -b -d -C all

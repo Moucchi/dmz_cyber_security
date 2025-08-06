@@ -490,6 +490,11 @@ Déja inclut avec :
  ```bash
   iptables -P FORWARD DROP
   ```
+curl du server LAN local vers lui meme :
+![curl localhost intrernal server](image-11.png)
+
+curl depuis le WAN vers me server LAN local :
+![WAN vers LAN](image-10.png)
 
 ##### - Autoriser le LAN à sortir vers l’extérieur via NAT
  ```bash
@@ -699,11 +704,10 @@ Il ne nous reste plus qu'à executer la commande :
 ```bash
 curl http://pornhub.com
 ```
-La connexion devrait être refusée ou redirigée, confirmant que le filtrage avec SquidGuard est fonctionnel.
+![curl LAN vers pornhub](image-12.png)
 
 ##### - Bloquer les réseaux sociaux pendant les heures de travail
-
-Pour aller plus loin, nous allons maintenant implémenter une politique de sécurité plus fine : bloquer l'accès aux réseaux sociaux uniquement pendant les heures de bureau. Nous utiliserons la fonctionnalité de gestion du temps de SquidGuard.
+Nous utiliserons la fonctionnalité de gestion du temps de SquidGuard.
 
 ###### 1. Mise à jour de la configuration de SquidGuard
 
@@ -810,8 +814,16 @@ service dnsmasq restart
 # Sur internal-desktop, pendant les heures de travail
 curl http://facebook.com 
 # Devrait être bloqué
-
 ```
+
+curl depuis le LAN vers facebook à 13h :
+![curl lan fb 13h](image-13.png)
+
+configuration de l'heure de travail à 13h pour le test :
+![heure 13h](image-14.png)
+
+curl depuis le LAN vers facebook à durant les heures de travail:
+![curl LAN fb heure de travail](image-15.png)
 
 ##### - Limiter la bande passante avec iptables
 
@@ -845,6 +857,7 @@ Pour vérifier que les règles sont actives, vous pouvez lister les règles de l
 ```bash
 iptables -L FORWARD -v -n
 ```
+![limite de bande passante avec iptables](image-17.png)
 
 Pour tester la limitation, vous pouvez générer un fichier volumineux sur le serveur `internet` et le télécharger depuis une machine du LAN en utilisant `wget`.
 
@@ -862,7 +875,11 @@ wget http://19.4.3.17/largefile.img
 
 #### 3.2. **DMZ**
 **Accessible en HTTP/HTTPS depuis WAN et LAN** et **Ne peut initier aucune connexion sortante** sont déjaà realisés avec la configuration du pare-feu
+LAN -> DMZ 
+![alt text](image-20.png)
 
+WAN -> DMZ
+![wan -> dmz](image-19.png)
 #### 3.3. **Surveillance IDS avec Snort**
 
 ##### Detecter et journaliser les tentatives d'attaque et de scan
