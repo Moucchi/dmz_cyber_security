@@ -1005,3 +1005,37 @@ snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort
     - ![resultat snort](image-8.png)
 - log snort pour les scans de nmap
     - ![cat log snort](image-9.png)
+
+## Analyse et conclusion
+
+Notre mise en œuvre d'une architecture DMZ via GNS3 et Docker a permis de créer un environnement réseau sécurisé qui répond aux objectifs initiaux. Cette section présente une analyse des résultats obtenus et les conclusions tirées de ce travail pratique.
+
+### Réalisation des objectifs
+
+1. **Isolation des réseaux** : La DMZ a été correctement isolée du LAN interne, permettant d'héberger des services accessibles depuis l'extérieur sans compromettre la sécurité du réseau interne.
+
+2. **Filtrage du trafic** : Le pare-feu a été configuré pour filtrer efficacement le trafic entre les différentes zones (WAN, DMZ, LAN) selon les règles établies. Les tests ont confirmé que seuls les services autorisés (HTTP, HTTPS, SSH) sont accessibles depuis le LAN et le WAN vers la DMZ.
+
+3. **Protection contre les attaques** : L'intégration de Snort a démontré la capacité à détecter et journaliser diverses tentatives d'attaque et de scan, comme montré lors des tests avec nmap.
+
+4. **Contrôle d'accès au contenu** : Le système de filtrage avec Squid et SquidGuard a permis de bloquer efficacement les réseaux sociaux pendant les heures de travail et les sites pornographiques .
+
+5. **Qualité de service** : La limitation de bande passante à 500 KB/s pour chaque machine du LAN assure une distribution équitable des ressources réseau.
+
+### Difficultés rencontrées
+
+1. **Configuration de SquidGuard** : La mise en place du filtrage de contenu a nécessité une attention particulière aux permissions des fichiers et à la syntaxe du fichier de configuration.
+
+2. **Gestion des règles iptables** : L'élaboration d'un ensemble cohérent de règles de pare-feu a demandé une compréhension approfondie des mécanismes de filtrage et de NAT.
+
+3. **Intégration de Snort** : La configuration des règles de détection pour cibler spécifiquement notre environnement a requis plusieurs ajustements.
+
+4. **Absence d'accès Internet** : Dans notre environnement de simulation, nous n'avons pas pu avoir un accès réel à Internet, ce qui a limité certains tests notamment pour le filtrage de contenu et la résolution DNS. Nous avons dû simuler ces aspects en utilisant des entrées DNS locales et des contenus hébergés dans notre propre infrastructure.
+
+### Conclusion
+
+Ce travail pratique nous a permis d'appliquer concrètement les concepts théoriques de sécurité réseau à travers la mise en place d'une DMZ fonctionnelle. La combinaison de GNS3 et Docker s'est révélée être un choix pertinent, offrant la flexibilité nécessaire pour simuler une infrastructure réseau complexe.
+
+Les compétences développées lors de ce projet incluent la configuration avancée de pare-feu, la mise en œuvre de systèmes de filtrage de contenu, et l'utilisation d'outils de détection d'intrusion.
+
+En conclusion, malgré quelques difficultés techniques, l'objectif principal de créer une architecture DMZ sécurisée a été atteint avec succès. Les tests effectués ont validé le bon fonctionnement de l'ensemble des mécanismes de sécurité mis en place, démontrant ainsi la robustesse de notre solution.
