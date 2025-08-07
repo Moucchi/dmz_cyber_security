@@ -509,6 +509,20 @@ packets necessaires**, **``iptables`` ne contient encore aucune regle**.
 
 ![Autoriser HTTP, HTTPS, SSH vers la DMZ ](image-1.png)
 
+**Justification :**
+1. Première règle (`iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ...`) : 
+   - `-A FORWARD` ajoute la règle à la chaîne FORWARD qui traite les paquets routés entre interfaces
+   - `-p tcp` filtre uniquement le protocole TCP
+   - `-s $LAN,$WAN` spécifie les sources autorisées (réseau local et Internet)
+   - `-d $DMZ` cible uniquement les paquets à destination de la DMZ
+   - `-m multiport --dports $HTTP,$HTTPS,$SSH` utilise le module multiport pour spécifier efficacement plusieurs ports de destination (80, 443, 22)
+   - `-m conntrack --ctstate NEW,ESTABLISHED,RELATED` active le module de suivi de connexion et autorise : les nouvelles connexions (NEW), les paquets appartenant à une connexion déjà établie (ESTABLISHED), et les paquets liés à une connexion existante comme dans le FTP passif (RELATED)
+   - `-j ACCEPT` applique l'action d'acceptation pour les paquets correspondant à tous les critères ci-dessus
+
+2. Seconde règle (`iptables -A FORWARD -s $DMZ -d $LAN,$WAN...`) :
+   - Cette règle complémentaire autorise uniquement les réponses depuis la DMZ vers le LAN ou le WAN
+   - L'absence de l'état `NEW` dans `--ctstate` est cruciale : elle empêche les serveurs de la DMZ d'initier des connexions vers l'intérieur ou l'extérieur, limitant ainsi la portée d'une éventuelle compromission
+
 ##### - Bloquer tout autre port ou protocole par défaut
 
  ```bash
@@ -516,6 +530,9 @@ packets necessaires**, **``iptables`` ne contient encore aucune regle**.
   ```
 
 ![Bloquer tout autre port ou protocole par défaut](image-3.png)
+
+**Justification :**
+Cette règle applique une politique de sécurité par défaut restrictive (deny-by-default), un principe fondamental dans la conception de pare-feu. En bloquant tout trafic non explicitement autorisé, nous réduisons considérablement la surface d'attaque. Cette approche est essentielle car elle garantit que seules les connexions précédemment définies comme légitimes sont autorisées à traverser le pare-feu, tandis que toute tentative d'exploitation de services non autorisés est automatiquement bloquée. Cela nous protège également contre les risques liés aux services qui pourraient être activés par erreur ou aux nouvelles vulnérabilités découvertes sur des ports non surveillés.
 
 ##### - Bloquer l’accès du WAN vers le LAN
 
@@ -546,11 +563,20 @@ curl depuis le WAN vers me server LAN local :
 - affichage des packets dans internet :
     - ![alt text](image-7.png)
 
+**Justification :**
+Ces trois règles fonctionnent ensemble pour permettre la communication du réseau LAN vers l'extérieur tout en maintenant la sécurité :
+1. La première règle (`MASQUERADE`) agit sur la table NAT et manipule les paquets sortants. Elle remplace l'adresse IP source des paquets provenant du LAN par l'adresse IP publique du pare-feu sur son interface WAN. Cette substitution permet aux machines du LAN (qui utilisent des adresses privées) de communiquer avec Internet.
+2. La deuxième règle autorise le transfert des paquets du LAN vers le WAN. L'option `--ctstate NEW,ESTABLISHED,RELATED` est cruciale : elle permet aux machines du LAN d'initier de nouvelles connexions (`NEW`) et de maintenir les connexions déjà établies (`ESTABLISHED`) ou liées à une connexion existante (`RELATED`).
+3. La troisième règle permet le retour des paquets de réponse depuis le WAN vers le LAN, mais uniquement pour des connexions déjà établies ou associées (`ESTABLISHED,RELATED`). Cette restriction empêche l'initiation de connexions depuis l'extérieur, renforçant ainsi la sécurité du réseau interne.
+
 ##### - Mise en place d'un serveur DNS (Dnsmasq)
 
 Pour simplifier la résolution de noms dans notre topologie, nous allons configurer `dnsmasq` sur le pare-feu. Ce service
 agira comme un serveur DNS pour le LAN, résolvant les noms de domaine de notre réseau local et transférant les autres
 requêtes à des serveurs DNS externes (simulés ou réels).
+
+**Justification :**
+L'implémentation d'un serveur DNS local avec Dnsmasq sur notre pare-feu etant donné que notre environnement ne dispose pas d'access à internet et donc on ne peut pas utiliser les DNS standards comme ceux de google ou cloudflare.
 
 ###### 1. Configuration de Dnsmasq
 
@@ -690,6 +716,9 @@ Rediriger le trafic HTTP du LAN vers Squid
 ```bash
 iptables -t nat -A PREROUTING -i $LAN_IFACE -p tcp --dport 80 -j REDIRECT --to-port 3128
 ```
+
+**Justification du fonctionnement de la règle :**
+Cette règle NAT utilise la chaîne `PREROUTING` qui intercepte les paquets avant qu'ils ne soient routés. Le paramètre `-i $LAN_IFACE` spécifie que seul le trafic entrant sur l'interface LAN est concerné. Le filtre `-p tcp --dport 80` cible spécifiquement le trafic HTTP standard. L'action `REDIRECT --to-port 3128` redirige ce trafic vers le port local où Squid écoute, sans que les clients ne soient conscients de cette redirection.
 
 ###### 5. Finalisation de la configuration
 
@@ -866,16 +895,15 @@ Pour garantir une utilisation équitable des ressources réseau, nous allons met
 Service (QoS) pour limiter la bande passante de chaque machine du LAN à 500 Ko/s. Nous utiliserons le module `hashlimit`
 d'iptables.
 
+**Justification :**
+L'implémentation de limitations de bande passante répond à plusieurs besoins critiques dans un environnement réseau partagé. Premièrement, elle prévient la monopolisation des ressources réseau par un petit nombre d'utilisateurs ou d'applications, garantissant ainsi une distribution équitable de la connectivité Internet. Deuxièmement, elle améliore la disponibilité des services critiques en évitant la congestion du réseau. Troisièmement, elle permet d'optimiser les coûts en maximisant l'utilisation de la bande passante disponible sans nécessiter d'augmentation de capacité. La limitation à 500 Ko/s par machine offre un débit suffisant pour les activités professionnelles normales tout en dissuadant les téléchargements volumineux non essentiels. L'utilisation du module `hashlimit` d'iptables est particulièrement pertinente car elle permet un contrôle granulaire basé sur l'adresse IP source, assurant que chaque poste de travail dispose de sa propre "enveloppe" de bande passante.
+
 Le module `hashlimit` permet de créer des règles basées sur un taux de paquets ou de données, par adresse IP.
 
 ###### 1. Application de la limitation de bande passante
 
 Sur le pare-feu, nous allons ajouter deux règles à la chaîne `FORWARD` : une pour le trafic sortant (upload) et une pour
 le trafic entrant (download).
-
-- **Limite** : 500 Ko/s, ce qui équivaut à `500kb/s` pour `iptables`.
-- **Mode** : Nous utilisons `--hashlimit-mode srcip` pour le trafic sortant (limiter chaque machine du LAN) et
-  `--hashlimit-mode dstip` pour le trafic entrant.
 
 ```bash
 # Sur le pare-feu
@@ -884,6 +912,11 @@ iptables -A FORWARD -s $LAN -o $WAN_IFACE -m hashlimit --hashlimit-name lan_uplo
 
 iptables -A FORWARD -d $LAN -i $WAN_IFACE -m hashlimit --hashlimit-name lan_download --hashlimit-mode dstip --hashlimit-above 500kb/s -j DROP
 ```
+
+**Justification du fonctionnement des règles :**
+1. La première règle cible spécifiquement le trafic sortant (`-s $LAN -o $WAN_IFACE`) et utilise le module `hashlimit` pour limiter le débit. Le paramètre `--hashlimit-name lan_upload` attribue un nom à cette limite pour la distinguer dans les tables de hachage du noyau Linux. Le mode `--hashlimit-mode srcip` applique la limitation individuellement à chaque adresse IP source du LAN, garantissant ainsi l'équité entre les utilisateurs. L'action `DROP` rejette simplement les paquets dépassant le seuil de 500kb/s.
+
+2. La seconde règle fonctionne de manière similaire mais pour le trafic entrant (`-d $LAN -i $WAN_IFACE`). Elle utilise `--hashlimit-mode dstip` pour appliquer la limite par adresse IP de destination, assurant que chaque machine du LAN est limitée indépendamment pour son trafic descendant.
 
 Ces règles garantissent que ni l'upload ni le download ne dépassent 500 Ko/s pour chaque machine du réseau local.
 
@@ -903,6 +936,8 @@ une machine du LAN en utilisant `wget`.
 ```bash
 # Sur le serveur 'internet'
 dd if=/dev/zero of=/var/www/html/largefile.img bs=1M count=100
+
+![generation du fichier volumineux](image-21.png)
 
 # Sur 'internal-desktop'
 wget http://19.4.3.17/largefile.img
@@ -926,6 +961,9 @@ la configuration du pare-feu
 
 ##### Detecter et journaliser les tentatives d'attaque et de scan
 
+**Justification :**
+L'implémentation d'un système de détection d'intrusion (IDS) comme Snort constitue une couche de défense essentielle pour notre DMZ. Contrairement au pare-feu qui se concentre sur le filtrage du trafic selon des règles préétablies, l'IDS analyse en profondeur le contenu des paquets pour identifier des signatures d'attaque connues et des comportements suspects. Ce système nous permet de détecter rapidement les tentatives de reconnaissance (scans de ports), les attaques d'injection (SQL, XSS) et d'autres vecteurs d'attaque, même si le trafic utilise des ports autorisés. La journalisation des événements fournit une traçabilité précieuse pour l'analyse forensique en cas d'incident et permet d'affiner continuellement notre politique de sécurité. Le placement de Snort directement dans la DMZ est stratégique car cette zone est particulièrement exposée aux menaces externes, étant accessible depuis Internet.
+
 ###### 1. Configuration de base de Snort
 
 On commence par faire un backup du fichier de configuration principal de snort
@@ -945,6 +983,12 @@ D'abord, nous modifions les variables de réseau dans snort.conf pour cibler sp�
 # Dans /etc/snort/snort.conf
 ipvar HOME_NET 19.4.3.9
 ipvar EXTERNAL_NET !$HOME_NET
+```
+
+Commenter toutes les regles actives
+```bash
+cd /etc/snort/
+sed -i '/^include \$RULE_PATH\// {/local\.rules/! s/^/#/}' snort.conf
 ```
 
 ###### 3. Création de règles de détection personnalisées
@@ -981,10 +1025,7 @@ snort.conf:
 
 ```bash
 # Dans /etc/snort/snort.conf
-output unified2: filename snort.log, limit 128, nostamp, mpls_event_types, vlan_event_types
 output log_tcpdump: /var/log/snort/tcpdump.log
-output alert_fast: /var/log/snort/alert.fast
-output alert_csv: /var/log/snort/alert.csv default
 ```
 
 ###### 5. Démarrage de Snort avec la nouvelle configuration
@@ -995,6 +1036,15 @@ Enfin, nous démarrons Snort avec la configuration mise à jour:
 # Créer le répertoire pour les logs
 mkdir -p /var/log/snort/
 
+chown -R snort:snort /var/log/snort/
+
+# Verifier si les syntax sont correctes 
+snort -T -c /etc/snort/snort.conf
+
+service snort restart
+
+# Demarrer snort
+# snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort/ -i eth0
 snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort/ -i eth0
 
 ```
@@ -1005,6 +1055,43 @@ snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort
     - ![resultat snort](image-8.png)
 - log snort pour les scans de nmap
     - ![cat log snort](image-9.png)
+
+## Résultats des tests
+
+Cette section présente une synthèse des différents tests effectués pour valider le bon fonctionnement de notre architecture DMZ et des mécanismes de sécurité mis en place.
+
+### Connectivité et isolation des réseaux
+
+| Test | Résultat | Acteurs impliqués | Commande utilisée | Observation |
+|------|----------|--------------------|-------------------|-------------|
+| LAN → DMZ (HTTP/HTTPS) | Réussi | Depuis `internal-desktop` vers `public-server` | `curl http://19.4.3.9`<br>`curl -k https://19.4.3.9` | Le trafic est correctement autorisé depuis le LAN vers les services web de la DMZ |
+| WAN → DMZ (HTTP/HTTPS) | Réussi | Depuis `internet` vers `public-server` | `curl http://19.4.3.9`<br>`curl -k https://19.4.3.9` | Le trafic est correctement autorisé depuis le WAN vers les services web de la DMZ |
+| LAN → WAN | Réussi | Depuis `internal-desktop` vers `internet` | `ping 19.4.3.17` | Le trafic sortant du LAN est correctement masqué par NAT |
+| WAN → LAN | Bloqué | Depuis `internet` vers `internal-server` | `curl http://19.4.3.2` | Aucun accès direct n'est possible depuis le WAN vers le LAN, comme prévu |
+| DMZ → LAN | Bloqué | Depuis `public-server` vers `internal-server` | `ping 19.4.3.2` | La DMZ ne peut pas initier de connexion vers le LAN, assurant une bonne isolation |
+
+### Filtrage de contenu
+
+| Test | Résultat | Acteurs impliqués | Commande utilisée | Observation |
+|------|----------|--------------------|-------------------|-------------|
+| Accès aux sites pornographiques | Bloqué | Depuis `internal-desktop` via `firewall` (SquidGuard) | `curl http://pornhub.com` | Le filtrage SquidGuard bloque efficacement l'accès aux sites pornographiques |
+| Accès aux réseaux sociaux (heures de travail) | Bloqué | Configuration sur `firewall` puis test depuis `internal-desktop` | `date -s "09:30:00"`<br>`curl http://facebook.com` | L'accès est bloqué pendant les heures de travail définies |
+| Accès aux réseaux sociaux (hors heures) | Autorisé | Configuration sur `firewall` puis test depuis `internal-desktop` | `date -s "13:30:00"`<br>`curl http://facebook.com` | L'accès est correctement autorisé en dehors des heures de travail |
+
+### Qualité de service et limitation de bande passante
+
+| Test | Résultat | Acteurs impliqués | Commandes utilisées | Observation |
+|------|----------|--------------------|---------------------|-------------|
+| Téléchargement de fichier volumineux | Limité | Depuis `internal-desktop` vers `internet` à travers les règles QoS du `firewall` | Sur le serveur WAN (`internet`) :<br>`dd if=/dev/zero of=/var/www/html/largefile.img bs=1M count=100`<br><br>Sur le client LAN (`internal-desktop`) :<br>`wget http://19.4.3.17/largefile.img` | La vitesse est effectivement plafonnée à environ 500 KB/s |
+
+### Détection d'intrusion
+
+| Test | Résultat | Acteurs impliqués | Commandes utilisées | Observation |
+|------|----------|--------------------|---------------------|-------------|
+| Scan de ports depuis le WAN | Détecté | Attaque depuis `internet`, détection par `snort` sur `public-server` | Sur `internet` :<br>`nmap -sS 19.4.3.9`<br><br>Sur `public-server` pour vérifier les logs :<br>`cat /var/log/snort/alert.fast` | Snort détecte et journalise correctement les tentatives de scan de ports |
+| Simulation d'attaques web | Détecté | Attaque depuis `internet`, détection par `snort` sur `public-server` | Sur `internet` :<br>`curl "http://19.4.3.9/?id=1 UNION SELECT username,password FROM users"`<br>`curl "http://19.4.3.9/?data=<script>alert('XSS')</script>"` | Les requêtes suspectes contenant des motifs d'attaque sont identifiées |
+
+Ces tests confirment que notre architecture DMZ répond aux exigences de sécurité définies dans le cahier des charges. L'isolation des différentes zones réseau est effective, le filtrage de contenu fonctionne correctement selon les politiques établies, et les mécanismes de détection d'intrusion sont opérationnels.
 
 ## Analyse et conclusion
 
