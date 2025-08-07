@@ -3,7 +3,6 @@
 ## Membres du groupe :
 
 - 1979
-- 2000
 - 2075
 
 ## Table des matieres :
@@ -78,6 +77,15 @@
           * [3. Création de règles de détection personnalisées](#3-création-de-règles-de-détection-personnalisées)
           * [4. Configuration de la journalisation](#4-configuration-de-la-journalisation)
           * [5. Démarrage de Snort avec la nouvelle configuration](#5-démarrage-de-snort-avec-la-nouvelle-configuration)
+  * [Résultats des tests](#résultats-des-tests)
+    * [Connectivité et isolation des réseaux](#connectivité-et-isolation-des-réseaux)
+    * [Filtrage de contenu](#filtrage-de-contenu)
+    * [Qualité de service et limitation de bande passante](#qualité-de-service-et-limitation-de-bande-passante)
+    * [Détection d'intrusion](#détection-dintrusion)
+  * [Analyse et conclusion](#analyse-et-conclusion)
+    * [Réalisation des objectifs](#réalisation-des-objectifs)
+    * [Difficultés rencontrées](#difficultés-rencontrées)
+    * [Conclusion](#conclusion)
 <!-- TOC -->
 
 ## Introduction
