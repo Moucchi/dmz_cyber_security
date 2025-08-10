@@ -150,21 +150,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     iptables \
     iproute2 \
-    tcpdump \
     squid \
     squidguard \
     squid-cgi \
-    apache2-utils \
-    dnsutils \
     dnsmasq \
     iputils-ping \
-    curl \
-    wget \
-    nano \
-    iftop \
-    tcptrack \
-    wondershaper \
-    cron
+    nano 
 ```
 
 **Rôle** : Pare-feu principal avec filtrage de paquets (iptables), proxy web (Squid), filtrage de contenu (SquidGuard)
@@ -181,19 +172,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     apache2 \
-    lynx \
     iputils-ping \
-    traceroute \
     curl \
     wget \
     nano \
     openssh-client \
     openssh-server \
     iproute2 \
-    dnsutils \
     apache2-utils \
     tcpdump \
-    net-tools \
     snort 
 ```
 
@@ -211,15 +198,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     apache2 \
-    lynx \
     iputils-ping \
-    traceroute \
     curl \
     wget \
     nano \
-    openssh-client \
     iproute2 \
-    dnsutils \
     apache2-utils
 ```
 
@@ -244,9 +227,7 @@ RUN apt-get update && apt-get install -y \
     nano \
     openssh-client \
     iproute2 \
-    apache2 \
-    dnsutils \
-    tcpdump
+    apache2
 ```
 
 **Rôle** : Machine externe utilisée pour simuler des connexions depuis Internet et tester les règles de sécurité.
@@ -303,7 +284,7 @@ On commence par instancier les containers et les relier comme dans la figure ci-
     - e1 ←→ eth0 public-server
 
 - **firewall**
-    - eth0 ←→ e0 internal-switch
+    - eth0 ←→ e0 internet
     - eth1 ←→ e0 internal-switch
     - eth2 ←→ e1 dmz-switch
 
@@ -490,7 +471,7 @@ echo "<html>
 
 #### 3.1. **Pare-feu**
 
-On definit tout d'abord les varables à utiliser :
+On definit tout d'abord les variables à utiliser :
 
  ```bash
   WAN="19.4.3.16/29"
@@ -899,8 +880,7 @@ curl depuis le LAN vers facebook à durant les heures de travail:
 
 ##### - Limiter la bande passante avec iptables
 
-Pour garantir une utilisation équitable des ressources réseau, nous allons mettre en place une politique de Qualité de
-Service (QoS) pour limiter la bande passante de chaque machine du LAN à 500 Ko/s. Nous utiliserons le module `hashlimit`
+Pour garantir une utilisation équitable des ressources réseau, nous allons limiter la bande passante de chaque machine du LAN à 500 Ko/s. Nous utiliserons le module `hashlimit`
 d'iptables.
 
 **Justification :**

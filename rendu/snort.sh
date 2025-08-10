@@ -76,7 +76,7 @@ cat >> /etc/snort/snort.conf << 'EOF'
 # - alert_csv: Format structuré pour importation dans des outils d'analyse ou SIEM
 output log_tcpdump: /var/log/snort/tcpdump.log
 output alert_fast: /var/log/snort/alert.fast
-output alert_csv: /var/log/snort/alert.csv default
+output alert_csv: /var/log/snort/alert.csv
 EOF
 
 # 5. Création du répertoire pour les logs
