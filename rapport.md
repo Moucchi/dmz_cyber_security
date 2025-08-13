@@ -713,16 +713,6 @@ Cette règle NAT utilise la chaîne `PREROUTING` qui intercepte les paquets avan
 
 Compilez la base de données de SquidGuard, ajustez les permissions et redémarrez les services.
 
-```bash
-squidGuard -b -d -C all
-
-chown -R proxy:proxy /var/lib/squidguard/db
-chown -R proxy:proxy /var/log/squid
-chmod -R 755 /var/lib/squidguard/db
-
-service squid restart
-```
-
 ###### 5.1 Vérification de la configuration
 
 Avant de redémarrer Squid, il est crucial de vérifier que les fichiers de configuration ne contiennent pas d'erreurs de
@@ -741,10 +731,15 @@ Si la configuration de Squid est valide mais que le service ne démarre toujours
 SquidGuard.
 
 ```bash
-chown -R proxy:proxy /var/lib/squidguard/db
-chmod -R 755 /var/lib/squidguard/db
 
 squidGuard -b -d -C all
+
+chown -R proxy:proxy /var/lib/squidguard/db
+chown -R proxy:proxy /var/log/squid
+chmod -R 755 /var/lib/squidguard/db
+
+service squid restart
+
 ```
 
 ###### 6. Test du filtrage
@@ -848,9 +843,6 @@ redemarrer squid
 
 ```bash
 squidGuard -b -d -C all
-
-chown -R proxy:proxy /var/lib/squidguard/db
-chmod -R 755 /var/lib/squidguard/db
 
 service squid restart
 ```
@@ -1014,6 +1006,7 @@ snort.conf:
 ```bash
 # Dans /etc/snort/snort.conf
 output log_tcpdump: /var/log/snort/tcpdump.log
+output alert_fast : /var/log/snort/alert.fast
 ```
 
 ###### 5. Démarrage de Snort avec la nouvelle configuration

@@ -54,6 +54,3 @@ echo "19.4.3.2 internal.lan" >> /etc/hosts
 
 # Démarrage du service DNSmasq
 service dnsmasq restart
-
-# Vérification de l'état du service
-service dnsmasq status

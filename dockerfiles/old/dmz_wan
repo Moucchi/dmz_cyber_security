@@ -1,0 +1,20 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    hping3 \
+    lynx \
+    iputils-ping \
+    traceroute \
+    curl \
+    wget \
+    nano \
+    openssh-client \
+    iproute2 \
+    apache2 \
+    dnsutils \
+    tcpdump \
+    dnsmasq \
+    nmap \
+    net-tools

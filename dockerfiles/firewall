@@ -17,6 +17,12 @@ RUN apt-get update && apt-get install -y \
     nano \
     iftop \
     tcptrack \
-    wondershaper \
     cron \
-    dnsmasq
+    dnsmasq && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY firewall_startup.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/startup.sh
+
+ENTRYPOINT ["/usr/local/bin/startup.sh"]
+CMD ["bash"]

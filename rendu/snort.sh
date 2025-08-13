@@ -95,8 +95,7 @@ snort -T -c /etc/snort/snort.conf -i eth0
 
 # 7. Démarrage de Snort
 # JUSTIFICATION: Instructions pour le déploiement en production ou en test
-# Deux modes de démarrage sont proposés selon le contexte d'utilisation:
-# Options de la commande:
+
 # -D : mode démon (arrière-plan)
 # -q : mode silencieux (moins de messages)
 # -u/-g : exécution sous l'utilisateur/groupe snort (principe du moindre privilège)
@@ -104,10 +103,3 @@ snort -T -c /etc/snort/snort.conf -i eth0
 # -i : interface réseau à surveiller
 # -l : répertoire pour les logs
 echo "snort -D -q -u snort -g snort -c /etc/snort/snort.conf -i eth0 -l /var/log/snort/"
-echo "Pour démarrer Snort en mode interactif (pour les tests), exécutez :"
-# L'option -A console affiche les alertes directement dans le terminal
-# Ce mode est utile pour le débogage et les tests en temps réel
-echo "snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort/ -i eth0"
-
-echo "Snort est configuré pour détecter les scans, les attaques DoS et les attaques web."
-# Les alertes seront enregistrées dans /var/log/snort/."

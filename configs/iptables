@@ -14,7 +14,6 @@ WAN_IFACE="eth0"
 LAN_IFACE="eth1"
 DMZ_IFACE="eth2"
 
-
 ##### - Autoriser HTTP, HTTPS, SSH vers la DMZ (depuis WAN et LAN)
  ```bash
   iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ -m multiport --dports $HTTP,$HTTPS,$SSH -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
@@ -29,9 +28,8 @@ DMZ_IFACE="eth2"
 
 
 ##### -  Bloquer l’accès du WAN vers le LAN
-Déja inclut avec :
  ```bash
-  iptables -P FORWARD DROP
+  iptables -A FORWARD -p tcp -s $WAN -d $LAN -m multiport --dports $HTTP,$HTTPS,$SSH -m conntrack --ctstate NEW -j DROP
   ```
 
 ##### - Autoriser le LAN à sortir vers l’extérieur via NAT

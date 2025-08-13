@@ -18,4 +18,11 @@ RUN apt-get update && apt-get install -y \
     tcpdump \
     net-tools \
     snort \
-    dnsmasq
+    dnsmasq && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY dmz_webserver_startup.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/startup.sh
+
+ENTRYPOINT ["/usr/local/bin/startup.sh"]
+CMD ["bash"]
