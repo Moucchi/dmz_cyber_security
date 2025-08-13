@@ -871,60 +871,9 @@ curl depuis le LAN vers facebook à durant les heures de travail:
 ![curl LAN fb heure de travail](image-15.png)
 
 ##### - Limiter la bande passante avec iptables
-
-Pour garantir une utilisation équitable des ressources réseau, nous allons limiter la bande passante de chaque machine du LAN à 500 Ko/s. Nous utiliserons le module `hashlimit`
-d'iptables.
-
-**Justification :**
-L'implémentation de limitations de bande passante répond à plusieurs besoins critiques dans un environnement réseau partagé. Premièrement, elle prévient la monopolisation des ressources réseau par un petit nombre d'utilisateurs ou d'applications, garantissant ainsi une distribution équitable de la connectivité Internet. Deuxièmement, elle améliore la disponibilité des services critiques en évitant la congestion du réseau. Troisièmement, elle permet d'optimiser les coûts en maximisant l'utilisation de la bande passante disponible sans nécessiter d'augmentation de capacité. La limitation à 500 Ko/s par machine offre un débit suffisant pour les activités professionnelles normales tout en dissuadant les téléchargements volumineux non essentiels. L'utilisation du module `hashlimit` d'iptables est particulièrement pertinente car elle permet un contrôle granulaire basé sur l'adresse IP source, assurant que chaque poste de travail dispose de sa propre "enveloppe" de bande passante.
-
-Le module `hashlimit` permet de créer des règles basées sur un taux de paquets ou de données, par adresse IP.
-
-###### 1. Application de la limitation de bande passante
-
-Sur le pare-feu, nous allons ajouter deux règles à la chaîne `FORWARD` : une pour le trafic sortant (upload) et une pour
-le trafic entrant (download).
-
-```bash
-# Sur le pare-feu
-
-iptables -A FORWARD -s $LAN -o $WAN_IFACE -m hashlimit --hashlimit-name lan_upload --hashlimit-mode srcip --hashlimit-above 500kb/s -j DROP
-
-iptables -A FORWARD -d $LAN -i $WAN_IFACE -m hashlimit --hashlimit-name lan_download --hashlimit-mode dstip --hashlimit-above 500kb/s -j DROP
-```
-
-**Justification du fonctionnement des règles :**
-1. La première règle cible spécifiquement le trafic sortant (`-s $LAN -o $WAN_IFACE`) et utilise le module `hashlimit` pour limiter le débit. Le paramètre `--hashlimit-name lan_upload` attribue un nom à cette limite pour la distinguer dans les tables de hachage du noyau Linux. Le mode `--hashlimit-mode srcip` applique la limitation individuellement à chaque adresse IP source du LAN, garantissant ainsi l'équité entre les utilisateurs. L'action `DROP` rejette simplement les paquets dépassant le seuil de 500kb/s.
-
-2. La seconde règle fonctionne de manière similaire mais pour le trafic entrant (`-d $LAN -i $WAN_IFACE`). Elle utilise `--hashlimit-mode dstip` pour appliquer la limite par adresse IP de destination, assurant que chaque machine du LAN est limitée indépendamment pour son trafic descendant.
-
-Ces règles garantissent que ni l'upload ni le download ne dépassent 500 Ko/s pour chaque machine du réseau local.
-
-###### 2. Vérification et Test
-
-Pour vérifier que les règles sont actives, vous pouvez lister les règles de la chaîne `FORWARD` :
-
-```bash
-iptables -L FORWARD -v -n
-```
-
-![limite de bande passante avec iptables](image-17.png)
-
-Pour tester la limitation, vous pouvez générer un fichier volumineux sur le serveur `internet` et le télécharger depuis
-une machine du LAN en utilisant `wget`.
-
-```bash
-# Sur le serveur 'internet'
-dd if=/dev/zero of=/var/www/html/largefile.img bs=1M count=100
-
-![generation du fichier volumineux](image-21.png)
-
-# Sur 'internal-desktop'
-wget http://19.4.3.17/largefile.img
-```
-
-`wget` affichera la vitesse de téléchargement, qui devrait être plafonnée aux alentours de 500 KB/s.
-![limite bande passante](image-4.png)
+tc qdisc add dev eth1 root handle 1: htb default 10
+tc class add dev eth1 parent 1: classid 1:10 htb rate 4000kbit ceil 4000kbit burst 15k
+tc qdisc add dev eth1 parent 1:10 handle 10: fq_codel
 
 #### 3.2. **DMZ**
 

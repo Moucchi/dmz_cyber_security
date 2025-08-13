@@ -132,7 +132,12 @@ chown -R proxy:proxy /var/log/squid
 chmod -R 755 /var/lib/squidguard/db
 
 squid -k parse
-
 service squid restart || true
+
+if [[ -x /usr/local/bin/apply_tc_per_ip.sh ]]; then
+    /usr/local/bin/apply_tc_per_ip.sh
+else
+    echo "[firewall_startup] WARNING: /usr/local/bin/apply_tc_per_ip.sh manquant ou non exécutable."
+fi
 
 exec "$@"
