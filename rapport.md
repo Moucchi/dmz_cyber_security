@@ -66,9 +66,13 @@
           * [1. Mise à jour de la configuration de SquidGuard](#1-mise-à-jour-de-la-configuration-de-squidguard)
           * [2. Création de la liste noire des réseaux sociaux](#2-création-de-la-liste-noire-des-réseaux-sociaux)
           * [3. Finalisation et Test](#3-finalisation-et-test)
-        * [- Limiter la bande passante avec iptables](#--limiter-la-bande-passante-avec-iptables)
-          * [1. Application de la limitation de bande passante](#1-application-de-la-limitation-de-bande-passante)
-          * [2. Vérification et Test](#2-vérification-et-test)
+        * [- Limiter la bande passante avec TC (Traffic Control)](#--limiter-la-bande-passante-avec-tc-traffic-control)
+          * [1. Conversion et terminologie](#1-conversion-et-terminologie)
+          * [2. Justification](#2-justification)
+          * [3. Fonctionnement de TC avec HTB](#3-fonctionnement-de-tc-avec-htb)
+          * [4. Explication du script de limitation de bande passante](#4-explication-du-script-de-limitation-de-bande-passante)
+          * [5. Tests fonctionnels et vérification](#5-tests-fonctionnels-et-vérification)
+          * [7. Rollback / Réinitialisation](#7-rollback--réinitialisation)
       * [3.2. **DMZ**](#32-dmz)
       * [3.3. **Surveillance IDS avec Snort**](#33-surveillance-ids-avec-snort)
         * [Detecter et journaliser les tentatives d'attaque et de scan](#detecter-et-journaliser-les-tentatives-dattaque-et-de-scan)
@@ -116,7 +120,7 @@ l'infrastructure :
 
 #### 1.1 Client LAN (`ubuntu_client`)
 
-Cette image simule une machine cliente dans le réseau LAN interne de l'entreprise :
+Cette image simule une machine cliente dans le réseau LAN interne:
 
 ```dockerfile
 FROM ubuntu:20.04
@@ -134,9 +138,6 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     dnsutils
 ```
-
-**Rôle** : Machine cliente utilisée pour tester l'accès depuis le LAN vers la DMZ et Internet, et valider les règles de
-filtrage du pare-feu.
 
 #### 1.2 Pare-feu (`ubuntu_firewall`)
 
@@ -157,9 +158,6 @@ RUN apt-get update && apt-get install -y \
     iputils-ping \
     nano 
 ```
-
-**Rôle** : Pare-feu principal avec filtrage de paquets (iptables), proxy web (Squid), filtrage de contenu (SquidGuard)
-et outils de monitoring réseau.
 
 #### 1.3 Serveur Web DMZ (`ubuntu_webserver`)
 
@@ -183,10 +181,6 @@ RUN apt-get update && apt-get install -y \
     tcpdump \
     snort 
 ```
-
-**Rôle** : Serveur web Apache situé dans la DMZ, accessible depuis Internet mais isolé du réseau LAN interne. Il intègre
-également des outils de supervision (`tcpdump`, `net-tools`) et un IDS (`snort`) pour la détection d'intrusions.
-
 #### 1.4 Serveur Web LAN (`ubuntu_lan_webserver`)
 
 Cette image simule un serveur web interne au LAN :
@@ -205,8 +199,6 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     apache2-utils
 ```
-
-**Rôle** : Serveur web interne au LAN, utilisé pour tester l'accès et l'isolation entre le LAN et la DMZ/WAN.
 
 #### 1.5 WAN (`ubuntu_wan`)
 
@@ -230,7 +222,6 @@ RUN apt-get update && apt-get install -y \
     apache2
 ```
 
-**Rôle** : Machine externe utilisée pour simuler des connexions depuis Internet et tester les règles de sécurité.
 
 Toutes ces images utilisent Ubuntu 20.04 comme base et incluent la variable d'environnement
 `DEBIAN_FRONTEND=noninteractive` pour automatiser l'installation des paquets sans interaction utilisateur.
@@ -314,7 +305,6 @@ On commence par instancier les containers et les relier comme dans la figure ci-
 Après le démarrage de toutes les instances, on configure leurs adresses IP comme suit :
 
 ###### a) LAN
-
 - **internal-desktop**
   ```bash
   ip a add 19.4.3.1/29 dev eth0
@@ -524,12 +514,9 @@ packets necessaires**, **``iptables`` ne contient encore aucune regle**.
 Cette règle applique une politique de sécurité par défaut restrictive (deny-by-default), un principe fondamental dans la conception de pare-feu. En bloquant tout trafic non explicitement autorisé, nous réduisons considérablement la surface d'attaque. Cette approche est essentielle car elle garantit que seules les connexions précédemment définies comme légitimes sont autorisées à traverser le pare-feu, tandis que toute tentative d'exploitation de services non autorisés est automatiquement bloquée. Cela nous protège également contre les risques liés aux services qui pourraient être activés par erreur ou aux nouvelles vulnérabilités découvertes sur des ports non surveillés.
 
 ##### - Bloquer l’accès du WAN vers le LAN
-
-Déja inclut avec :
-
- ```bash
-  iptables -P FORWARD DROP
-  ```
+```bash
+iptables -A FORWARD -p tcp -s $WAN -d $LAN -m conntrack --ctstate NEW -j DROP
+```
 
 curl du server LAN local vers lui meme :
 ![curl localhost intrernal server](image-11.png)
@@ -591,6 +578,10 @@ l'entrée directement dans le fichier `/etc/hosts` du pare-feu. `dnsmasq` le ser
 ```bash
 # Sur le pare-feu
 echo "19.4.3.17 pornhub.com" >> /etc/hosts
+echo "19.4.3.17 facebook.com" >> /etc/hosts
+echo "19.4.3.17 twitter.com" >> /etc/hosts
+echo "19.4.3.9 webserver.dmz" >> /etc/hosts
+echo "19.4.3.2 internal.lan" >> /etc/hosts
 ```
 
 ###### 3. Démarrage du service
@@ -630,18 +621,18 @@ directives. Squid lira ce fichier et appliquera nos règles.
 Créez le fichier `/etc/squid/conf.d/00-custom.conf` sur le pare-feu :
 
 ```bash
-cat >/etc/squid/conf.d/00-custom.conf<< 'EOF'
+cat > /etc/squid/conf.d/00-custom.conf << 'EOF'
 http_port 3128 intercept
-
 http_port 127.0.0.1:3129
 
 acl localnet src 19.4.3.0/29
-
 http_access allow localnet
+http_access deny all
 
 url_rewrite_program /usr/bin/squidGuard -c /etc/squidguard/squidGuard.conf
-
 url_rewrite_children 5
+
+cache deny all
 EOF
 ```
 
@@ -851,12 +842,6 @@ Pour tester, ajoutez les domaines des réseaux sociaux au fichier `/etc/hosts` d
 résolve), puis essayez d'y accéder depuis `internal-desktop` avec `curl`.
 
 ```bash
-# Sur le pare-feu
-echo "19.4.3.17 facebook.com" >> /etc/hosts
-echo "19.4.3.17 twitter.com" >> /etc/hosts
-
-service dnsmasq restart
-
 # Sur internal-desktop, pendant les heures de travail
 curl http://facebook.com 
 ```
@@ -870,10 +855,155 @@ configuration de l'heure de travail à 13h pour le test :
 curl depuis le LAN vers facebook à durant les heures de travail:
 ![curl LAN fb heure de travail](image-15.png)
 
-##### - Limiter la bande passante avec iptables
-tc qdisc add dev eth1 root handle 1: htb default 10
-tc class add dev eth1 parent 1: classid 1:10 htb rate 4000kbit ceil 4000kbit burst 15k
-tc qdisc add dev eth1 parent 1:10 handle 10: fq_codel
+##### - Limiter la bande passante avec TC (Traffic Control)
+
+Objectif : plafonner chaque machine du LAN (19.4.3.0/29) à 500 Ko/s (≈ 4000 kbit/s) en download ET upload, de manière stable et équitable.
+
+###### 1. Conversion et terminologie
+
+- 500 Ko/s = 500 * 1024 ≈ 512000 octets/s ≈ 4 096 000 bit/s ≈ 4000 kbit/s (arrondi).
+- Plafond “par IP” signifie : chaque hôte du LAN ne dépassera pas 500 Ko/s, même s’il est seul.
+
+###### 2. Justification
+
+La limitation de bande passante par hôte :
+- Empêche la monopolisation des ressources (équité et prévisibilité).
+- Décourage les téléchargements lourds non essentiels.
+
+###### 3. Fonctionnement de TC avec HTB
+
+**Principe** :
+- On applique un qdisc HTB racine sur chaque interface pertinente.
+- On crée une classe par IP du LAN (sauf l’IP du firewall).
+- Download (vers LAN) : classification par destination sur eth1.
+- Upload (depuis LAN) : classification par source sur eth0 (vers WAN) et eth2 (vers DMZ).
+- fq_codel par classe pour limiter la latence sous saturation.
+
+> **Détails techniques**:
+> - **HTB (Hierarchical Token Bucket)** : Algorithme de mise en file d'attente qui permet de créer une hiérarchie de classes de trafic, chacune avec ses propres limites de débit.
+> - **fq_codel (Fair Queuing Controlled Delay)** : Algorithme de gestion de file d'attente qui réduit la latence en évitant le "bufferbloat" (accumulation excessive de paquets dans les tampons).
+> - **tc (Traffic Control)** : Outil Linux permettant de configurer le contrôle de trafic du noyau.
+
+Plage LAN (/29) :
+- 19.4.3.0 réseau
+- 19.4.3.1–19.4.3.6 hôtes
+- 19.4.3.7 broadcast
+- Firewall LAN : 19.4.3.3 (non limité)
+
+Taux cible : 4000kbit (≈ 500 Ko/s).  
+Burst : petite tolérance contrôlée (ex: 25k) pour ne pas pénaliser les handshakes TCP/TLS.
+
+###### 4. Explication du script de limitation de bande passante
+
+Le script `apply_tc_per_ip.sh` implémente une limitation de bande passante avancée en utilisant tc et HTB. Examinons les principales sections et commandes :
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Définition des variables réseau
+LAN_BASE="19.4.3"                # Base de l'adressage IP du LAN
+LAN_IF="eth1"   # Interface vers LAN (download shaping -> match dst)
+WAN_IF="eth0"   # Interface vers WAN (upload shaping -> match src)
+DMZ_IF="eth2"   # Interface vers DMZ (upload shaping -> match src)
+FIREWALL_SUFFIX=3                # Dernier octet de l'IP du pare-feu (ne sera pas limité)
+RATE="4000kbit"                  # Taux de transfert cible (~500 Ko/s)
+BURST="25k"                      # Tolérance de burst pour les pics courts
+CEIL="$RATE"                     # Plafond (identique au taux de base)
+
+# Plage d'adresses des hôtes LAN (dans un /29: .1 à .6 sont utilisables)
+HOST_START=1
+HOST_END=6
+
+# Fonction de journalisation pour le suivi des opérations
+log(){ echo "[apply_tc_per_ip] $*"; }
+
+# Fonction qui crée un qdisc HTB racine sur une interface si nécessaire
+# Cette fonction est idempotente (peut être appelée plusieurs fois sans effet secondaire)
+maybe_add_root() {
+  local IF=$1
+  # Vérifie si un qdisc HTB existe déjà sur l'interface
+  if ! tc qdisc show dev "$IF" | grep -q "htb 1:" ; then
+     log "Root HTB sur $IF"
+     # Crée un qdisc HTB racine avec l'identifiant 1:
+     # - default 999: les paquets non classifiés vont dans la classe 999
+     tc qdisc add dev "$IF" root handle 1: htb default 999
+     # Crée une classe par défaut avec un débit très limité (128kbit)
+     # - Cette classe gère le trafic qui ne correspond à aucune règle
+     tc class add dev "$IF" parent 1: classid 1:999 htb rate 128kbit ceil 128kbit
+     # Ajoute fq_codel à cette classe pour gérer la latence sous charge
+     tc qdisc add dev "$IF" parent 1:999 fq_codel
+  fi
+}
+
+# Fonction qui crée des classes de limitation et des filtres pour chaque IP du LAN
+add_classes_and_filters() {
+  local IF=$1 MODE=$2 FIELD
+  # Détermine si on filtre par source ou destination en fonction du mode
+  case "$MODE" in
+    src) FIELD="src";;  # Pour limiter le trafic sortant (upload)
+    dst) FIELD="dst";;  # Pour limiter le trafic entrant (download)
+    *) echo "Mode invalide"; exit 1;;
+  esac
+  
+  # Assure qu'un qdisc racine existe sur l'interface
+  maybe_add_root "$IF"
+  
+  # Parcourt toutes les adresses IP potentielles du LAN
+  for ((i=HOST_START;i<=HOST_END;i++)); do
+    # Ignore l'IP du pare-feu (ne pas la limiter)
+    [[ $i -eq $FIREWALL_SUFFIX ]] && continue
+    
+    # Construit l'adresse IP complète et l'identifiant de classe
+    IP="${LAN_BASE}.${i}"
+    CLASSID="1:1${i}"  # Format: 1:1X où X est le dernier octet de l'IP
+    
+    # Si la classe n'existe pas déjà, la créer
+    if ! tc class show dev "$IF" | grep -q "class htb ${CLASSID}"; then
+       log "Classe $CLASSID pour $IP ($FIELD) sur $IF"
+       # Crée une classe HTB avec:
+       # - rate: débit garanti (4000kbit)
+       # - ceil: débit maximum (même valeur = pas de partage de bande passante excédentaire)
+       # - burst: tolérance pour les pics courts
+       tc class add dev "$IF" parent 1: classid "$CLASSID" htb rate "$RATE" ceil "$CEIL" burst "$BURST"
+       # Ajoute fq_codel à la classe pour une meilleure gestion de la latence
+       tc qdisc add dev "$IF" parent "$CLASSID" fq_codel
+    fi
+    
+    # Si le filtre n'existe pas déjà, le créer
+    if ! tc filter show dev "$IF" parent 1: | grep -q "flowid $CLASSID.* $FIELD $IP"; then
+       log "Filtre $FIELD=$IP -> $CLASSID sur $IF"
+       # Crée un filtre u32 qui:
+       # - Correspond aux paquets ayant l'IP spécifiée comme source ou destination
+       # - Les dirige vers la classe correspondante
+       tc filter add dev "$IF" parent 1: protocol ip prio 1 u32 \
+         match ip $FIELD $IP/32 flowid "$CLASSID"
+    fi
+  done
+}
+
+# Application des limites pour les trois cas de figure:
+add_classes_and_filters "$LAN_IF" dst   # 1. Download vers LAN (limite par IP de destination)
+add_classes_and_filters "$WAN_IF" src   # 2. Upload vers WAN (limite par IP source)
+add_classes_and_filters "$DMZ_IF" src   # 3. Upload vers DMZ (limite par IP source)
+```
+  
+###### 5. Tests fonctionnels et vérification
+
+Pour vérifier que les limites de bande passante sont bien appliquées, on peut utiliser plusieurs outils:
+
+```bash
+# Sur le serveur WAN (`internet`)
+dd if=/dev/zero of=/var/www/html/largefile.img bs=1M count=100
+
+# Dans `internal-desktop`: tester la limitation de bande passante
+wget http://19.4.3.17/largefile.img
+```
+
+Résultats attendus:
+- Les vitesses de transfert ne devraient pas dépasser ~500 Ko/s par machine
+- La latence reste raisonnable même sous charge (grâce à fq_codel)
+- Les transferts sont régulés sans pertes de paquets excessives
 
 #### 3.2. **DMZ**
 
@@ -1020,8 +1150,6 @@ Cette section présente une synthèse des différents tests effectués pour vali
 |------|----------|--------------------|---------------------|-------------|
 | Scan de ports depuis le WAN | Détecté | Attaque depuis `internet`, détection par `snort` sur `public-server` | Sur `internet` :<br>`nmap -sS 19.4.3.9`<br><br>Sur `public-server` pour vérifier les logs :<br>`cat /var/log/snort/alert.fast` | Snort détecte et journalise correctement les tentatives de scan de ports |
 | Simulation d'attaques web | Détecté | Attaque depuis `internet`, détection par `snort` sur `public-server` | Sur `internet` :<br>`curl "http://19.4.3.9/?id=1 UNION SELECT username,password FROM users"`<br>`curl "http://19.4.3.9/?data=<script>alert('XSS')</script>"` | Les requêtes suspectes contenant des motifs d'attaque sont identifiées |
-
-Ces tests confirment que notre architecture DMZ répond aux exigences de sécurité définies dans le cahier des charges. L'isolation des différentes zones réseau est effective, le filtrage de contenu fonctionne correctement selon les politiques établies, et les mécanismes de détection d'intrusion sont opérationnels.
 
 ## Analyse et conclusion
 

@@ -1,2 +1,0 @@
-ip a add 19.4.3.17/29 dev eth0
-ip route add default via 19.4.3.18 dev  eth0
