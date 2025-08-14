@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="19419568-a0fd-4774-921d-9a16cd118dc6" name="Changes" comment="ajout du projet" />
+    <list default="true" id="e3a8d00c-1c50-4937-9dce-522bb792c230" name="Changes" comment="ajout des livrables : rapport_pdf, captures d'ecrans, fichiers de configurations et justification nat et filtrage">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rapport.md" beforeDir="false" afterPath="$PROJECT_DIR$/rapport.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rapport.pdf" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -10,37 +14,37 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "Moucchi"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Moucchi&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Moucchi/dmz_cyber_security.git",
-    "accountId": "62b8296d-3a02-40f6-92e3-ceacacc2ba0a"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Moucchi/dmz_cyber_security.git&quot;,
+    &quot;accountId&quot;: &quot;62b8296d-3a02-40f6-92e3-ceacacc2ba0a&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 7
-}]]></component>
-  <component name="ProjectId" id="31HH8eENpCColzlkttC0qXra1CC" />
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="31HQfBai52TYEbegCqM341zG95s" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "kotlin-language-version-configured": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -51,20 +55,21 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="19419568-a0fd-4774-921d-9a16cd118dc6" name="Changes" comment="" />
-      <created>1755173920445</created>
+      <changelist id="e3a8d00c-1c50-4937-9dce-522bb792c230" name="Changes" comment="" />
+      <created>1755178619507</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1755173920445</updated>
-      <workItem from="1755173921980" duration="26000" />
+      <updated>1755178619507</updated>
+      <workItem from="1755178620722" duration="110000" />
+      <workItem from="1755178782304" duration="33000" />
     </task>
-    <task id="LOCAL-00001" summary="ajout du projet">
+    <task id="LOCAL-00001" summary="ajout des livrables : rapport_pdf, captures d'ecrans, fichiers de configurations et justification nat et filtrage">
       <option name="closed" value="true" />
-      <created>1755173936322</created>
+      <created>1755178686616</created>
       <option name="number" value="00001" />
       <option name="presentableId" value="LOCAL-00001" />
       <option name="project" value="LOCAL" />
-      <updated>1755173936322</updated>
+      <updated>1755178686616</updated>
     </task>
     <option name="localTasksCounter" value="2" />
     <servers />
@@ -73,7 +78,7 @@
     <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="ajout du projet" />
-    <option name="LAST_COMMIT_MESSAGE" value="ajout du projet" />
+    <MESSAGE value="ajout des livrables : rapport_pdf, captures d'ecrans, fichiers de configurations et justification nat et filtrage" />
+    <option name="LAST_COMMIT_MESSAGE" value="ajout des livrables : rapport_pdf, captures d'ecrans, fichiers de configurations et justification nat et filtrage" />
   </component>
 </project>

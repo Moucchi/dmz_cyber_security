@@ -72,7 +72,6 @@
           * [3. Fonctionnement de TC avec HTB](#3-fonctionnement-de-tc-avec-htb)
           * [4. Explication du script de limitation de bande passante](#4-explication-du-script-de-limitation-de-bande-passante)
           * [5. Tests fonctionnels et vérification](#5-tests-fonctionnels-et-vérification)
-          * [7. Rollback / Réinitialisation](#7-rollback--réinitialisation)
       * [3.2. **DMZ**](#32-dmz)
       * [3.3. **Surveillance IDS avec Snort**](#33-surveillance-ids-avec-snort)
         * [Detecter et journaliser les tentatives d'attaque et de scan](#detecter-et-journaliser-les-tentatives-dattaque-et-de-scan)
