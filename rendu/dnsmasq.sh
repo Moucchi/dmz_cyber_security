@@ -6,8 +6,8 @@
 # =====================================================================
 # JUSTIFICATION DE L'IMPLÉMENTATION DNS:
 # - DNSmasq est utilisé comme serveur DNS local pour plusieurs raisons:
-#   2. Sécurité: contrôle des résolutions DNS et possibilité de blocage de domaines
-#   4. Flexibilité: permet de définir des entrées DNS locales personnalisées
+#   1. Sécurité: contrôle des résolutions DNS et possibilité de blocage de domaines
+#   2. Flexibilité: permet de définir des entrées DNS locales personnalisées
 # =====================================================================
 
 # Création du fichier de configuration principal
@@ -40,9 +40,6 @@ EOF
 
 # Ajout d'entrées DNS locales pour les tests
 # Ces entrées seront servies par dnsmasq aux clients du LAN
-# - Les trois premières entrées implémentent une politique de filtrage DNS:
-#   * Les sites pornographiques sont bloqués pour des raisons de conformité et de productivité
-#   * Les réseaux sociaux sont redirigés pour limiter leur utilisation en milieu professionnel
 # - Les deux dernières entrées facilitent l'accès aux serveurs internes par nom plutôt que par IP:
 #   * webserver.dmz pointe vers le serveur public dans la DMZ
 #   * internal.lan pointe vers le serveur interne du LAN

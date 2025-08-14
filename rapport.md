@@ -485,8 +485,10 @@ packets necessaires**, **``iptables`` ne contient encore aucune regle**.
   iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ -m multiport --dports $HTTP,$HTTPS,$SSH -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
   iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
   ```
-
-![Autoriser HTTP, HTTPS, SSH vers la DMZ ](image-1.png)
+- Curl depuis LAN vers DMZ
+  - ![curl internal-desktop vers dmz en http](image-22.png)
+- Curl depuis WAN vers DMZ
+  - ![curl internet vers dmz en http](image-23.png)
 
 **Justification :**
 1. Première règle (`iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ...`) : 
@@ -508,14 +510,21 @@ packets necessaires**, **``iptables`` ne contient encore aucune regle**.
   iptables -P FORWARD DROP
   ```
 
-![Bloquer tout autre port ou protocole par défaut](image-3.png)
-
 **Justification :**
 Cette règle applique une politique de sécurité par défaut restrictive (deny-by-default), un principe fondamental dans la conception de pare-feu. En bloquant tout trafic non explicitement autorisé, nous réduisons considérablement la surface d'attaque. Cette approche est essentielle car elle garantit que seules les connexions précédemment définies comme légitimes sont autorisées à traverser le pare-feu, tandis que toute tentative d'exploitation de services non autorisés est automatiquement bloquée. Cela nous protège également contre les risques liés aux services qui pourraient être activés par erreur ou aux nouvelles vulnérabilités découvertes sur des ports non surveillés.
+
+![Bloquer tout autre port ou protocole par défaut](image-3.png)
+
+- ping depuis LAN vers DMZ :
+  - ![echec de ping LAN vers DMZ](image-24.png)
+
+**Justification :**
+Le ping a echoué car le protocol utilisé pour le ping est bloqué
 
 ##### - Bloquer l’accès du WAN vers le LAN
 ```bash
 iptables -A FORWARD -p tcp -s $WAN -d $LAN -m conntrack --ctstate NEW -j DROP
+iptables -A FORWARD -p tcp -s $WAN -d $LAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 ```
 
 curl du server LAN local vers lui meme :
@@ -1010,6 +1019,11 @@ Résultats attendus:
 **Accessible en HTTP/HTTPS depuis WAN et LAN** et **Ne peut initier aucune connexion sortante** sont déjaà realisés avec
 la configuration du pare-feu
 
+```bash
+iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ -m multiport --dports $HTTP,$HTTPS,$SSH -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+```
+
 - LAN -> DMZ
     - ![alt text](image-20.png)
 
@@ -1042,12 +1056,6 @@ D'abord, nous modifions les variables de réseau dans snort.conf pour cibler sp�
 # Dans /etc/snort/snort.conf
 ipvar HOME_NET 19.4.3.9
 ipvar EXTERNAL_NET !$HOME_NET
-```
-
-Commenter toutes les regles actives
-```bash
-cd /etc/snort/
-sed -i '/^include \$RULE_PATH\// {/local\.rules/! s/^/#/}' snort.conf
 ```
 
 ###### 3. Création de règles de détection personnalisées
@@ -1104,9 +1112,7 @@ snort -T -c /etc/snort/snort.conf
 service snort restart
 
 # Demarrer snort
-# snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort/ -i eth0
-snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -l /var/log/snort/ -i eth0
-
+snort -D -q -u snort -g snort -c /etc/snort/snort.conf -i eth0 -l /var/log/snort/
 ```
 
 - nmap depuis internet vers la DMZ

@@ -39,6 +39,15 @@ DMZ_IFACE="eth2"   # Interface connectée à la DMZ
 iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ -m multiport --dports $HTTP,$HTTPS,$SSH -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
+# Bloquer toute autre port ou protocole par defaut
+# - Change le comportement par defaut à adopter si la requette ne correspond à aucune règle
+iptables -P FORWARD DROP
+
+# Bloquer l’accès du WAN vers le LAN
+# - Le trafic est bloqué pour toutes les nouvelles connexions mais est autorisé pour le trafic établi
+iptables -A FORWARD -p tcp -s $WAN -d $LAN -m conntrack --ctstate NEW -j DROP
+iptables -A FORWARD -p tcp -s $WAN -d $LAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
 # Autoriser le LAN à sortir vers l'extérieur via NAT
 # - La règle NAT (MASQUERADE) masque les adresses privées derrière l'IP publique du pare-feu
 # - Les règles FORWARD complémentaires contrôlent la transmission des paquets:
@@ -50,16 +59,8 @@ iptables -A FORWARD -s $LAN -o $WAN_IFACE -m conntrack --ctstate NEW,ESTABLISHED
 iptables -A FORWARD -s $WAN -i $WAN_IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 # Redirection du trafic HTTP vers le proxy Squid
-# - Le trafic HTTP sortant du LAN est automatiquement redirigé vers le proxy Squid (port 3128)
-# - Cette redirection est "transparente" car les clients n'ont pas besoin de configurer manuellement le proxy
+# - Le trafic HTTP sortant du LAN est automatiquement redirigé vers le proxy Squid (port 3128) pour filtrer le contenu
 iptables -t nat -A PREROUTING -i $LAN_IFACE -p tcp --dport 80 -j REDIRECT --to-port 3128
-
-# Limitation de bande passante pour le LAN
-# JUSTIFICATION:
-# - L'utilisation du module hashlimit permet de limiter le débit par adresse IP source/destination
-# - La limite est fixée à 500 kb/s pour l'upload et le download par machine
-iptables -A FORWARD -s $LAN -o $WAN_IFACE -m hashlimit --hashlimit-name lan_upload --hashlimit-mode srcip --hashlimit-above 500kb/s -j DROP
-iptables -A FORWARD -d $LAN -i $WAN_IFACE -m hashlimit --hashlimit-name lan_download --hashlimit-mode dstip --hashlimit-above 500kb/s -j DROP
 
 # Autorisation du loopback et connexions établies pour l'interface INPUT
 # JUSTIFICATION:

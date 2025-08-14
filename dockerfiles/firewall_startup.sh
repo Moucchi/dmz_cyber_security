@@ -26,6 +26,7 @@ iptables -A FORWARD -p tcp -s $LAN,$WAN -d $DMZ -m multiport --dports $HTTP,$HTT
 iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 iptables -A FORWARD -p tcp -s $WAN -d $LAN -m conntrack --ctstate NEW -j DROP
+iptables -A FORWARD -p tcp -s $WAN -d $LAN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 iptables -t nat -A POSTROUTING -s $LAN -o $WAN_IFACE -j MASQUERADE
 iptables -A FORWARD -s $LAN -o $WAN_IFACE -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
