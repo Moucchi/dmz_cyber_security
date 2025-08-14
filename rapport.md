@@ -902,7 +902,7 @@ Burst : petite tolérance contrôlée (ex: 25k) pour ne pas pénaliser les hands
 
 ###### 4. Explication du script de limitation de bande passante
 
-Le script `apply_tc_per_ip.sh` implémente une limitation de bande passante avancée en utilisant tc et HTB. Examinons les principales sections et commandes :
+Le script suivant implémente une limitation de bande passante avancée en utilisant tc et HTB. Examinons les principales sections et commandes :
 
 ```bash
 #!/usr/bin/env bash
