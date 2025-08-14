@@ -545,8 +545,8 @@ curl depuis le WAN vers me server LAN local :
 
 - ping depuis LAN vers WAN :
     - ![alt text](image-6.png)
-- affichage des packets dans internet :
-    - ![alt text](image-7.png)
+- affichage des packets dans le firewall :
+    - ![trafique firewall](image-25.png)
 
 **Justification :**
 Ces trois règles fonctionnent ensemble pour permettre la communication du réseau LAN vers l'extérieur tout en maintenant la sécurité :
@@ -751,8 +751,8 @@ Il ne nous reste plus qu'à executer la commande :
 ```bash
 curl http://pornhub.com
 ```
-
-![curl LAN vers pornhub](image-12.png)
+- Affichage de la page de blocage par defaut de squid apres avoir executé le `curl http://pornhub.com`
+![curl http://pornhub.com](image-26.png)
 
 ##### - Bloquer les réseaux sociaux pendant les heures de travail
 
@@ -855,14 +855,12 @@ résolve), puis essayez d'y accéder depuis `internal-desktop` avec `curl`.
 curl http://facebook.com 
 ```
 
-curl depuis le LAN vers facebook à 13h :
-![curl lan fb 13h](image-13.png)
-
-configuration de l'heure de travail à 13h pour le test :
-![heure 13h](image-14.png)
-
-curl depuis le LAN vers facebook à durant les heures de travail:
-![curl LAN fb heure de travail](image-15.png)
+- curl depuis le LAN vers facebook à 13h :
+  - ![curl lan fb 13h](image-13.png)
+- configuration de l'heure de travail à 13h pour le test :
+  - ![heure 13h](image-14.png)
+- curl depuis le LAN vers facebook à durant les heures de travail:
+  - ![curl LAN fb heure de travail](image-15.png)
 
 ##### - Limiter la bande passante avec TC (Traffic Control)
 
@@ -1009,10 +1007,11 @@ dd if=/dev/zero of=/var/www/html/largefile.img bs=1M count=100
 wget http://19.4.3.17/largefile.img
 ```
 
-Résultats attendus:
+Résultats:
 - Les vitesses de transfert ne devraient pas dépasser ~500 Ko/s par machine
-- La latence reste raisonnable même sous charge (grâce à fq_codel)
 - Les transferts sont régulés sans pertes de paquets excessives
+
+- ![wget http://19.4.3.17/largefile.img](image-27.png)
 
 #### 3.2. **DMZ**
 
@@ -1029,6 +1028,10 @@ iptables -A FORWARD -s $DMZ -d $LAN,$WAN -m conntrack --ctstate ESTABLISHED,RELA
 
 - WAN -> DMZ
     - ![wan -> dmz](image-19.png)
+
+- DMZ -> LAN et LAN ( initiation d'une connexion sortante vers internet puis vers le server interne )
+![DMZ -> WAN et LAN](image-29.png)
+
 
 #### 3.3. **Surveillance IDS avec Snort**
 
@@ -1116,11 +1119,12 @@ snort -D -q -u snort -g snort -c /etc/snort/snort.conf -i eth0 -l /var/log/snort
 ```
 
 - nmap depuis internet vers la DMZ
-    - ![nmap internet](image-5.png)
+  - ![nmap depuis internet vers la DMZ](image-32.png)
 - detection de nmap par snort dans la DMZ
-    - ![resultat snort](image-8.png)
+  - ![detection de nmap par snort dans la DMZ](image-33.png)
 - log snort pour les scans de nmap
-    - ![cat log snort](image-9.png)
+  - ![log snort pour les scans de nmap](image-34.png)
+
 
 ## Résultats des tests
 
@@ -1177,11 +1181,9 @@ Notre mise en œuvre d'une architecture DMZ via GNS3 et Docker a permis de crée
 
 1. **Configuration de SquidGuard** : La mise en place du filtrage de contenu a nécessité une attention particulière aux permissions des fichiers et à la syntaxe du fichier de configuration.
 
-2. **Gestion des règles iptables** : L'élaboration d'un ensemble cohérent de règles de pare-feu a demandé une compréhension approfondie des mécanismes de filtrage et de NAT.
+2. **Intégration de Snort** : La configuration des règles de détection pour cibler spécifiquement notre environnement a requis plusieurs ajustements.
 
-3. **Intégration de Snort** : La configuration des règles de détection pour cibler spécifiquement notre environnement a requis plusieurs ajustements.
-
-4. **Absence d'accès Internet** : Dans notre environnement de simulation, nous n'avons pas pu avoir un accès réel à Internet, ce qui a limité certains tests notamment pour le filtrage de contenu et la résolution DNS. Nous avons dû simuler ces aspects en utilisant des entrées DNS locales et des contenus hébergés dans notre propre infrastructure.
+3. **Absence d'accès Internet** : Dans notre environnement de simulation, nous n'avons pas pu avoir un accès réel à Internet, ce qui a limité certains tests notamment pour le filtrage de contenu et la résolution DNS. Nous avons dû simuler ces aspects en utilisant des entrées DNS locales et des contenus hébergés dans notre propre infrastructure.
 
 ### Conclusion
 
